@@ -1,0 +1,24 @@
+{% extends "base.html" %} {% block title %}Crear cuenta{% endblock %} {% block
+content %}
+<h1>Crear cuenta</h1>
+<form method="post" class="mt-3">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label>Email</label>
+    {{ form.email|add_class:"form-control" if form.email }} {% if not form.email
+    %}<input type="email" name="email" class="form-control" required />{% endif
+    %}
+  </div>
+  <div class="mb-3">
+    <label>Contraseña</label>
+    {{ form.password|add_class:"form-control" if form.password }} {% if not
+    form.password %}<input
+      type="password"
+      name="password"
+      class="form-control"
+      required
+    />{% endif %}
+  </div>
+  <button class="btn btn-success">Registrarme</button>
+</form>
+{% endblock %}

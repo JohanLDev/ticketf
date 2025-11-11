@@ -1,0 +1,6 @@
+Hola,
+
+Adjuntamos tu ticket para {{ ticket.evento.nombre }}.
+Orden #{{ ticket.orden_id }}. Presenta el PDF en el acceso.
+
+— Ticket-F

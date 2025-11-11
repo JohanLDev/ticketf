@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% block title %}Tipos de ticket{% endblock %}
+{% block content %}
+<h1>Tipos de ticket — {{ evento.nombre }}</h1>
+<a class="btn btn-primary mb-3" href="{% url 'tickets:create' evento.id %}">Crear tipo</a>
+<table class="table">
+<tr><th>Nombre</th><th>Precio</th><th>Política</th><th>Reingreso</th><th>Activo</th><th></th></tr>
+{% for t in tipos %}
+<tr>
+  <td>{{ t.nombre }}</td>
+  <td>${{ t.precio }}</td>
+  <td>{{ t.access_policy }}</td>
+  <td>{{ t.reentry_rule }}</td>
+  <td>{{ t.activo }}</td>
+  <td>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'tickets:edit' evento.id t.pk %}">Editar</a>
+    <a class="btn btn-sm btn-outline-danger" href="{% url 'tickets:delete' evento.id t.pk %}">Eliminar</a>
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="6">Sin tipos de ticket.</td></tr>
+{% endfor %}
+</table>
+<a class="btn btn-outline-secondary" href="{% url 'events:list' %}">Volver a eventos</a>
+{% endblock %}

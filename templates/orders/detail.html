@@ -1,0 +1,133 @@
+{% extends "base.html" %}{% block title %}Detalle orden{% endblock %}
+{% block content %}
+
+<h1>Orden #{{ orden.id }} — {{ orden.evento.nombre }}</h1>
+<p><b>Comprador:</b> {{ orden.comprador_email }}</p>
+
+{# Mensajes flash (por si usas django.contrib.messages) #}
+{% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<table class="table align-middle">
+  <thead>
+    <tr>
+      <th style="width:34%">Código / QR / Envío</th>
+      <th>Tipo</th>
+      <th>Estado</th>
+      <th>Usado</th>
+      <th style="width:22%">Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in tickets %}
+    <tr>
+      <td>
+        <div><strong>{{ t.code }}</strong></div>
+        <img src="{% url 'orders:ticket_qr' t.code %}" width="120" height="120" alt="QR {{ t.code }}"><br>
+
+        <!-- Descargar PDF -->
+        <a href="{% url 'orders:ticket-pdf' t.code %}"
+           class="btn btn-sm btn-primary mt-2"
+           target="_blank" rel="noopener">
+          Descargar PDF
+        </a>
+
+        <!-- Enviar por correo (o estacionamiento) -->
+        <form method="post" action="{% url 'orders:ticket-email' t.code %}" class="mt-2">
+          {% csrf_token %}
+          <div class="input-group input-group-sm" style="max-width: 360px;">
+            <input type="email" name="email" class="form-control"
+                   value="{{ orden.comprador_email }}" placeholder="correo destino">
+            <button type="submit" class="btn btn-outline-primary">
+              {% if t.tipo.is_parking %}Enviar estacionamiento{% else %}Enviar por correo{% endif %}
+            </button>
+          </div>
+          {% if t.tipo.is_parking %}
+            <div class="form-text">Este tipo es de <b>estacionamiento</b>, se envía en correo separado.</div>
+          {% endif %}
+        </form>
+      </td>
+
+      <td>{{ t.tipo.nombre }}</td>
+      <td>{{ t.estado }}</td>
+      <td>{{ t.used_at|default:"—" }}</td>
+
+      <td>
+        <div class="d-flex gap-2 flex-wrap">
+          <!-- ANULAR -->
+          <form method="post" action="{% url 'orders:ticket-cancel' t.id %}"
+                onsubmit="return confirm('¿Anular ticket #{{ t.id }}?');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-danger"
+                    {% if t.estado == 'anulado' %}disabled{% endif %}>
+              Anular
+            </button>
+          </form>
+
+          <!-- REEMITIR (anula y crea reemplazo) -->
+          <form method="post" action="{% url 'orders:ticket-reissue' t.id %}"
+                onsubmit="return confirm('¿Reemitir ticket #{{ t.id }}? Esto anula el actual y genera otro.');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-warning">
+              Reemitir
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+
+    <!-- Fila de historial de acciones -->
+    <tr>
+      <td colspan="5">
+        <details>
+          <summary class="small text-muted">Historial de acciones</summary>
+          <ul class="mb-0 small">
+            {% for log in t.action_logs.all %}
+              <li>
+                {{ log.created_at|date:"Y-m-d H:i" }} — <strong>{{ log.action }}</strong>
+                {% if log.performed_by %} por {{ log.performed_by }}{% endif %}
+                {% if log.reason %} — ({{ log.reason }}){% endif %}
+              </li>
+            {% empty %}
+              <li class="text-muted">Sin acciones registradas</li>
+            {% endfor %}
+          </ul>
+
+          {% if t.replaced_by %}
+            <div class="mt-1 small">
+              <em>Reemplazado por ticket #{{ t.replaced_by.id }}</em>
+            </div>
+          {% endif %}
+        </details>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5">Sin tickets.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Resumen de orden</h2>
+<ul>
+  <li>Total de tickets: {{ resumen.total }}</li>
+  <li>Disponibles: {{ resumen.disponibles }}</li>
+  <li>Usados: {{ resumen.usados }}</li>
+</ul>
+
+<form method="post" action="{% url 'orders:order-email-all' orden.id %}" class="mb-3">
+  {% csrf_token %}
+  <div class="input-group" style="max-width:400px;">
+    <input type="email" name="email" class="form-control" value="{{ orden.comprador_email }}">
+    <button type="submit" class="btn btn-outline-primary">Enviar todos los tickets</button>
+  </div>
+</form>
+
+<a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Volver a órdenes</a>
+{% endblock %}

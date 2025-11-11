@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width:900px;">
+  <h1>Finaliza tu reserva — {{ event.nombre }}</h1>
+
+  <form id="checkoutForm" class="needs-validation" novalidate>
+    {% csrf_token %}
+    <div class="row g-3 mt-3">
+      <!-- Datos personales -->
+      <div class="col-md-6">
+        <label class="form-label">Nombres *</label>
+        <input id="nombres" class="form-control" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Apellido paterno *</label>
+        <input id="apellido1" class="form-control" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Apellido materno</label>
+        <input id="apellido2" class="form-control">
+      </div>
+
+      <!-- Contacto -->
+      <div class="col-md-6">
+        <label class="form-label">Email *</label>
+        <input id="email" type="email" class="form-control" required>
+        <div class="invalid-feedback">Email inválido.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Confirmar email *</label>
+        <input id="email2" type="email" class="form-control" required>
+        <div class="invalid-feedback">Los emails no coinciden.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Teléfono móvil *</label>
+        <input id="telefono" class="form-control" inputmode="numeric" pattern="\d{8,}" required>
+        <div class="invalid-feedback">Solo números, al menos 8 dígitos.</div>
+      </div>
+
+      <!-- Documento -->
+      <div class="col-md-2">
+        <label class="form-label d-block">Tipo doc.</label>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="doc_tipo" id="doc_tipo_rut" value="rut" checked>
+          <label class="form-check-label">RUT</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="doc_tipo" id="doc_tipo_passport" value="passport">
+          <label class="form-check-label">Pasaporte</label>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Número documento *</label>
+        <input id="documento" class="form-control" required>
+        <div class="invalid-feedback">Número de documento inválido.</div>
+      </div>
+
+      <!-- Ubicación -->
+      <div class="col-md-6">
+        <label class="form-label">País *</label>
+        <select id="pais" class="form-select" required>
+          <option value="">— Selecciona —</option>
+          <option value="CL">Chile</option>
+          <option value="AR">Argentina</option>
+          <option value="PE">Perú</option>
+          <option value="BR">Brasil</option>
+          <option value="US">Estados Unidos</option>
+          <option value="OTRO">Otro</option>
+        </select>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-6" id="wrap-region" style="display:none;">
+        <label class="form-label">Región *</label>
+        <select id="region" class="form-select">
+          <option value="">— Selecciona —</option>
+        </select>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Ciudad *</label>
+        <select id="ciudad" class="form-select" required>
+          <option value="">— Selecciona —</option>
+        </select>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Comuna *</label>
+        <select id="comuna" class="form-select" required>
+          <option value="">— Selecciona —</option>
+        </select>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <!-- Empresa -->
+      <div class="col-md-6">
+        <label class="form-label">Empresa / Institución *</label>
+        <input id="empresa" class="form-control" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Cargo *</label>
+        <input id="cargo" class="form-control" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Rubro *</label>
+        <input id="rubro" class="form-control" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <!-- Patente: aparece solo si compró estacionamiento -->
+      <div class="col-md-6" id="wrap-patente" style="display:none;">
+        <label class="form-label">Patente del vehículo *</label>
+        <input id="patente" class="form-control">
+        <div class="invalid-feedback">Obligatorio si agregaste Estacionamiento.</div>
+      </div>
+
+
+      <!-- Checkboxes -->
+      <div class="col-12 mt-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="acepta_terms" required>
+          <label class="form-check-label">
+            Acepto los <a href="#">Términos y Condiciones</a> y autorizo el tratamiento de mis datos personales.
+          </label>
+          <div class="invalid-feedback">Debes aceptar para continuar.</div>
+        </div>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" id="acepta_news">
+          <label class="form-check-label">Deseo recibir noticias y beneficios.</label>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-muted mt-3"><strong>*</strong> Campos obligatorios.</p>
+
+    <!-- Footer -->
+    <div class="d-flex justify-content-between align-items-center mt-4 border-top pt-3">
+      <p><strong>SUBTOTAL:</strong> <span id="subtotalStep3">$0</span></p>
+      <div>
+        <a href="{% url 'orders:public-checkout-step1' event.slug %}" class="btn btn-secondary">Atrás</a>
+        <button id="btn-pagar" class="btn btn-primary" type="submit">PAGAR (simulado)</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ========== ESTILOS VALIDACIÓN ========== -->
+<style>
+/* Ocultas por defecto */
+.invalid-feedback { display: none; }
+
+/* Mostrar mensajes SOLO cuando el campo está inválido */
+input.touched:invalid ~ .invalid-feedback,
+select.touched:invalid ~ .invalid-feedback,
+textarea.touched:invalid ~ .invalid-feedback,
+.was-validated input:invalid ~ .invalid-feedback,
+.was-validated select:invalid ~ .invalid-feedback,
+.was-validated textarea:invalid ~ .invalid-feedback { display: block; }
+
+/* Borde rojo solo si el propio campo está inválido */
+input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
+  border-color: #dc3545;
+}
+</style>
+
+<!-- ========== SCRIPT FORMULARIO ========== -->
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const form = $('checkoutForm');
+  const pagar = $('btn-pagar');
+  const money = n => (n||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0});
+
+  /* === Subtotal del paso anterior === */
+  const totals = JSON.parse(sessionStorage.getItem('checkout_totals') || 'null');
+  if (totals) $('subtotalStep3').textContent = money(totals.total);
+
+  // === Mostrar/ocultar PATENTE según selección del Step-1 ===
+  const payloadSel = JSON.parse(sessionStorage.getItem('checkout_payload') || 'null');
+  const hasParking = !!(payloadSel && payloadSel.has_parking);
+  const wrapPat = $('wrap-patente');
+  const inpPat  = $('patente');
+
+  function togglePatenteReq(){
+    if (!wrapPat || !inpPat) return;
+    if (hasParking) {
+      wrapPat.style.display = '';
+      inpPat.setAttribute('required','required');
+    } else {
+      wrapPat.style.display = 'none';
+      inpPat.removeAttribute('required');
+      inpPat.setCustomValidity('');
+    }
+  }
+  togglePatenteReq();
+
+
+
+  /* === Dependencias País -> Región -> Ciudad -> Comuna === */
+  const regionesCL = [
+    "Arica y Parinacota","Tarapacá","Antofagasta","Atacama","Coquimbo","Valparaíso",
+    "Metropolitana de Santiago","O’Higgins","Maule","Ñuble","Biobío","La Araucanía",
+    "Los Ríos","Los Lagos","Aysén","Magallanes"
+  ];
+
+  const comunasPorRegionCL = {
+    "Metropolitana de Santiago": ["Santiago","Providencia","Maipú","Puente Alto","Ñuñoa","Las Condes","La Florida"],
+    "Valparaíso": ["Valparaíso","Viña del Mar","Concón","Quilpué"],
+    "Biobío": ["Concepción","Talcahuano","Coronel","Lota"],
+    "Coquimbo": ["La Serena","Coquimbo"],
+    "Maule": ["Talca","Curicó","Linares"],
+    "Los Lagos": ["Puerto Montt","Osorno","Castro"],
+    "Antofagasta": ["Antofagasta","Calama","Tocopilla"]
+  };
+
+
+  const selPais = $('pais'), wrapReg = $('wrap-region'), selRegion = $('region'),
+        selCiudad = $('ciudad'), selComuna = $('comuna');
+
+  function fillRegiones() {
+    selRegion.innerHTML = '<option value="">— Selecciona —</option>';
+    regionesCL.forEach(r => selRegion.append(new Option(r,r)));
+  }
+  function fillCiudades(region) {
+    selCiudad.innerHTML = '<option value="">— Selecciona —</option>';
+    (comunasPorRegionCL[region] || []).forEach(c => selCiudad.append(new Option(c,c)));
+    selComuna.innerHTML = '<option value="">— Selecciona —</option>';
+  }
+  function fillComunas(ciudad) {
+    selComuna.innerHTML = '<option value="">— Selecciona —</option>';
+    selComuna.append(new Option(ciudad, ciudad)); // igual que ciudad (simplificado)
+  }
+
+  selPais.addEventListener('change', () => {
+    if (selPais.value === 'CL') { wrapReg.style.display=''; fillRegiones(); }
+    else { wrapReg.style.display='none'; selRegion.innerHTML='<option value="">— Selecciona —</option>'; }
+    saveBuyer();
+  });
+  selRegion.addEventListener('change', () => { fillCiudades(selRegion.value); saveBuyer(); });
+  selCiudad.addEventListener('change', () => { fillComunas(selCiudad.value); saveBuyer(); });
+  selComuna.addEventListener('change', saveBuyer);
+
+  /* === Persistencia === */
+  const KEY='checkout_buyer';
+  const fields=['nombres','apellido1','apellido2','email','email2','telefono',
+                'documento','pais','region','ciudad','comuna','empresa','cargo','rubro','patente'];
+  function saveBuyer(){
+    const data={};
+    fields.forEach(id=>{ const el=$(id); if(el) data[id]=el.value; });
+    data.doc_tipo=$('doc_tipo_rut').checked?'rut':'passport';
+    data.acepta_terms=$('acepta_terms').checked; data.acepta_news=$('acepta_news').checked;
+    sessionStorage.setItem(KEY,JSON.stringify(data));
+  }
+  function loadBuyer(){
+    try{
+      const d=JSON.parse(sessionStorage.getItem(KEY)||'null'); if(!d)return;
+      fields.forEach(id=>{ if($(id)) $(id).value=d[id]||''; });
+      if(d.doc_tipo==='passport')$('doc_tipo_passport').checked=true;
+      $('acepta_terms').checked=!!d.acepta_terms; $('acepta_news').checked=!!d.acepta_news;
+      if(d.pais==='CL'){ wrapReg.style.display=''; fillRegiones(); selRegion.value=d.region; fillCiudades(d.region); selCiudad.value=d.ciudad; fillComunas(d.ciudad); selComuna.value=d.comuna; }
+    }catch{}
+  }
+  document.querySelectorAll('#checkoutForm input, #checkoutForm select').forEach(el=>{
+    el.addEventListener('input', () => { saveBuyer(); validateSoft(); });
+    el.addEventListener('change', () => { saveBuyer(); validateSoft(); });
+    el.addEventListener('blur',  () => { el.classList.add('touched'); validateSoft(); });
+  });
+  loadBuyer();
+
+  /* === Validaciones suaves === */
+  function validateSoft(){
+  // reset (por si venía algo “pegado”)
+  ['email','email2','telefono','documento','patente','region','ciudad','comuna','acepta_terms']
+    .forEach(id => { const el = $(id); if (el) el.setCustomValidity(''); });
+
+  // EMAIL formato + coincidencia
+  const e1 = $('email'), e2 = $('email2');
+  if (e1) {
+    const emailFmtOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e1.value||'').trim());
+    e1.setCustomValidity(emailFmtOk ? '' : 'Email inválido.');
+  }
+  if (e1 && e2) {
+    const emailsOk = (e1.value||'').trim() && (e2.value||'').trim() && (e1.value.trim() === e2.value.trim());
+    e2.setCustomValidity(emailsOk ? '' : 'Los emails no coinciden.');
+  }
+
+  // teléfono (>=8 dígitos)
+  const tel = $('telefono');
+  if (tel) tel.setCustomValidity(/^\d{8,}$/.test((tel.value||'').trim()) ? '' : 'Teléfono inválido.');
+
+  // documento por tipo (acepta 12345678-9 o 123456789)
+  const doc = $('documento');
+  const isRut = $('doc_tipo_rut')?.checked;
+  if (doc) {
+    const v = (doc.value||'').replace(/\./g,'').trim();
+    const ok = isRut ? /^\d{6,10}(-?[0-9Kk])$/.test(v) : /^[A-Za-z0-9\-]{6,15}$/.test(v);
+    doc.setCustomValidity(ok ? '' : 'Número de documento inválido.');
+  }
+
+  // país=CL → región/ciudad/comuna requeridas
+  if (selPais.value === 'CL') {
+    selRegion.required = true; selCiudad.required = true; selComuna.required = true;
+  } else {
+    selRegion.required = false; selCiudad.required = false; selComuna.required = false;
+    selRegion.setCustomValidity(''); selCiudad.setCustomValidity(''); selComuna.setCustomValidity('');
+  }
+
+  // patente si compró estacionamiento
+  if (hasParking && inpPat) {
+    const okPat = /^[A-Za-z0-9\-]{4,8}$/.test((inpPat.value||'').trim());
+    inpPat.setCustomValidity(okPat ? '' : 'Ingresa una patente válida.');
+  }
+
+  // términos
+  const terms = $('acepta_terms');
+  if (terms) terms.setCustomValidity(terms.checked ? '' : 'Debes aceptar.');
+
+  return form.checkValidity();
+  }
+
+
+  // Documento (RUT/Pasaporte)
+  const doc = $('documento'); const isRut = $('doc_tipo_rut')?.checked;
+  if (doc) {
+    const v = (doc.value||'').trim();
+    const ok = isRut ? /^\d{6,10}-?[0-9kK]$/.test(v) : /^[A-Za-z0-9\-]{6,15}$/.test(v);
+    doc.setCustomValidity(ok ? '' : 'Número de documento inválido.');
+  }
+
+  // Patente requerida si hay estacionamiento
+  if (hasParking && inpPat) {
+    const okPat = /^[A-Za-z0-9\-]{4,8}$/.test((inpPat.value||'').trim());
+    inpPat.setCustomValidity(okPat ? '' : 'Ingresa una patente válida.');
+  }
+
+
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+
+    // Mantén tu validación actual
+    const ok = validateSoft();
+    form.classList.add('was-validated');
+    if (!ok) return;
+
+    // 1) Recupera el payload que ya tenías del Step 1
+    const prev = JSON.parse(sessionStorage.getItem('checkout_payload')||'null');
+    if(!prev){
+      alert('No hay tickets seleccionados.');
+      location.href = "{% url 'orders:public-checkout-step1' event.slug %}";
+      return;
+    }
+
+    // 2) Arma el buyer CON TUS MISMOS CAMPOS
+    const fields=['nombres','apellido1','apellido2','email','email2','telefono',
+                  'documento','pais','region','ciudad','comuna','empresa','cargo',
+                  'rubro','patente'];
+    const buyer={};
+    fields.forEach(id=> buyer[id] = document.getElementById(id)?.value || '');
+    buyer.doc_tipo = document.getElementById('doc_tipo_rut')?.checked ? 'rut' : 'passport';
+    buyer.acepta_terms = document.getElementById('acepta_terms')?.checked;
+    buyer.acepta_news  = document.getElementById('acepta_news')?.checked;
+
+    // 3) Inserta buyer dentro del payload existente (sin tocar lo demás)
+    const merged = { ...prev, buyer };
+    sessionStorage.setItem('checkout_payload', JSON.stringify(merged));
+    sessionStorage.setItem('checkout_buyer', JSON.stringify(buyer));
+
+    // 4) Redirige a la pantalla de pago simulado
+    window.location.href = "{% url 'orders:public-checkout-pay' event.slug %}";
+  });
+
+
+
+})();
+</script>
+{% endblock %}

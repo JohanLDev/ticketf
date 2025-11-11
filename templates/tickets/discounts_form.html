@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width:720px;">
+  <h1>Crear descuento</h1>
+  <form method="post" class="mt-3">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">Nombre del Descuento</label>
+      {{ form.nombre }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Código</label>
+      {{ form.codigo }}
+      <div class="form-text">Este es el código que escribirá el comprador en el checkout.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Evento</label>
+      {{ form.evento }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Asociado a qué ticket (opcional)</label>
+      {{ form.tipo_ticket }}
+      <div class="form-text">Si lo dejas vacío, aplica a cualquier combinación de tickets del evento.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Descuento final (CLP)</label>
+      {{ form.monto_descuento }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Cuántas veces se puede usar</label>
+      {{ form.usos_maximos }}
+    </div>
+    <div class="row">
+      <div class="col">
+        <label class="form-label">Vigente desde</label>
+        {{ form.vigente_desde }}
+      </div>
+      <div class="col">
+        <label class="form-label">Vigente hasta</label>
+        {{ form.vigente_hasta }}
+      </div>
+    </div>
+    <div class="form-check mt-3">
+      {{ form.activo }} <label class="form-check-label">Activo</label>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Guardar</button>
+      <a class="btn btn-secondary" href="{% url 'tickets:discounts_list' %}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

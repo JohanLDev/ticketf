@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{% block title %}Ticket-F{% endblock %}</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    />
+  </head>
+  <body>
+    <nav class="navbar bg-light px-3">
+      <a class="navbar-brand" href="{% url 'public:home' %}">Ticket-F</a>
+      
+      <div class="ms-auto">
+        {% if user.is_authenticated %}
+        <nav class="d-flex gap-3 align-items-center">
+          {% if user.is_superuser %}
+            <a href="{% url 'accounts:select_account' %}">Cambiar de cuenta</a>
+          {% endif %}
+
+          {% if user.is_superuser %}
+            <a href="{% url 'accounts:super_cuentas' %}">Super · Cuentas</a>
+          {% endif %}
+          
+          <a href="{% url 'accounts:admin_dashboard' %}">Panel</a>
+          <a href="{% url 'orders:list' %}">Órdenes</a>
+          <a href="{% url 'orders:validator' %}">Validador</a>
+          <span class="text-muted">Cuenta activa</span>
+          <form action="{% url 'logout' %}" method="post" style="display:inline;">
+
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link" style="padding:0; border:0; background:none;">
+              Logout
+            </button>
+          </form>
+
+        </nav>
+      {% else %}
+        <nav class="d-flex gap-3 align-items-center">
+          <a class="btn btn-primary btn-sm" href="{% url 'accounts:login' %}">Login</a>
+        </nav>
+      {% endif %}
+
+      </div>
+    </nav>
+    <main class="container py-4">{% block content %}
+      {% if messages %}
+          <div class="mb-3">
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endblock %}
+    
+    </main>
+  </body>
+</html>

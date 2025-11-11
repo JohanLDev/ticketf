@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}Analítica — {{ evento.nombre }}{% endblock %}
+{% block content %}
+<h1>{{ evento.nombre }} — Analítica</h1>
+
+<!-- Filtros de fecha -->
+<div class="d-flex gap-2 mb-3 align-items-end">
+  <div>
+    <label>Desde</label>
+    <input type="date" id="desde" class="form-control form-control-sm">
+  </div>
+  <div>
+    <label>Hasta</label>
+    <input type="date" id="hasta" class="form-control form-control-sm">
+  </div>
+  <button id="btnFiltrar" class="btn btn-sm btn-primary">Filtrar</button>
+  <button id="btnReset" class="btn btn-sm btn-outline-secondary">Reset</button>
+</div>
+
+<!-- Tarjetas resumen -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card text-center border-success">
+      <div class="card-body">
+        <h5 class="card-title">Emitidos</h5>
+        <h2>{{ resumen.emitidos }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center border-primary">
+      <div class="card-body">
+        <h5 class="card-title">Validados</h5>
+        <h2>{{ resumen.validados }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center border-warning">
+      <div class="card-body">
+        <h5 class="card-title">Anulados</h5>
+        <h2>{{ resumen.anulados }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center border-info">
+      <div class="card-body">
+        <h5 class="card-title">Asistencia</h5>
+        <h2>{{ resumen.asistencia }}%</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Donut de asistencia general -->
+<!-- Asistencia general (barra de progreso KPI) -->
+<div class="mt-5">
+  <h3>Asistencia general</h3>
+  <div class="progress" style="height: 28px;">
+    <div id="asistenciaBar"
+         class="progress-bar bg-success"
+         role="progressbar"
+         style="width: {{ resumen.asistencia }}%;"
+         aria-valuenow="{{ resumen.asistencia }}"
+         aria-valuemin="0"
+         aria-valuemax="100">
+      {{ resumen.asistencia }}%
+    </div>
+  </div>
+</div>
+
+
+<!-- Gráficos -->
+<h3 class="mt-5">Distribución de tickets por tipo</h3>
+<canvas id="chartTipos" height="120"></canvas>
+
+<h3 class="mt-5">Validaciones por tipo</h3>
+<canvas id="chartValidadosTipo" height="120"></canvas>
+
+<h3 class="mt-5">Evolución diaria de validaciones</h3>
+<canvas id="chartDiario" height="120"></canvas>
+
+<h3 class="mt-5">Emitidos vs Validados por tipo</h3>
+<canvas id="chartComparativo" height="120"></canvas>
+
+<!-- Botones -->
+<a href="{% url 'orders:event-export-csv' evento.id %}" target="_blank" class="btn btn-outline-success mt-4">
+  Descargar CSV de asistentes
+</a>
+<a href="{% url 'orders:event-report-pdf' evento.id %}" target="_blank" class="btn btn-outline-dark mt-4">
+  Descargar informe PDF
+</a>
+
+<a href="{% url 'events:list' %}" class="btn btn-outline-secondary mt-4">Volver a eventos</a>
+
+<!-- Datos iniciales -->
+{{ tipos_data|json_script:"tipos-data" }}
+{{ validados_por_tipo|json_script:"validados-tipo" }}
+{{ validados_por_dia|json_script:"validados-dia" }}
+{{ emitidos_vs_validados|json_script:"emitidos-vs-validados" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let tiposChart, validadosChart, diarioChart, compChart, asistenciaChart;
+
+function renderCharts(data) {
+  const tiposData = data.tipos;
+  const validadosTipo = data.validados_tipo;
+  const validadosDia = data.validados_dia;
+  const compData = data.emitidos_vs_validados || [];
+  const asistencia = data.resumen.asistencia || 0;   // <-- se define UNA sola vez
+
+  // destruir gráficos previos
+  if (tiposChart) tiposChart.destroy();
+  if (validadosChart) validadosChart.destroy();
+  if (diarioChart) diarioChart.destroy();
+  if (compChart) compChart.destroy();
+  if (asistenciaChart) asistenciaChart.destroy();
+
+  // distribución total (pie)
+  tiposChart = new Chart(document.getElementById("chartTipos"), {
+    type: 'pie',
+    data: {
+      labels: tiposData.map(t => t.tipo__nombre),
+      datasets: [{
+        data: tiposData.map(t => t.total),
+        backgroundColor: ['#00aaff', '#ffaa00', '#00cc66', '#cc3366', '#7777ff']
+      }]
+    }
+  });
+
+  // validaciones por tipo (bar)
+  validadosChart = new Chart(document.getElementById("chartValidadosTipo"), {
+    type: 'bar',
+    data: {
+      labels: validadosTipo.map(v => v.tipo__nombre),
+      datasets: [{
+        label: 'Tickets Validados',
+        data: validadosTipo.map(v => v.total),
+        backgroundColor: '#007bff'
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+
+  // evolución diaria (line)
+  diarioChart = new Chart(document.getElementById("chartDiario"), {
+    type: 'line',
+    data: {
+      labels: validadosDia.map(v => new Date(v.dia).toLocaleDateString()),
+      datasets: [{
+        label: 'Validaciones diarias',
+        data: validadosDia.map(v => v.total),
+        tension: 0.3,
+        borderColor: '#28a745'
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+
+  // comparativo emitidos vs validados (bar)
+  compChart = new Chart(document.getElementById("chartComparativo"), {
+    type: 'bar',
+    data: {
+      labels: compData.map(d => d.tipo),
+      datasets: [
+        { label: 'Emitidos', data: compData.map(d => d.emitidos), backgroundColor: 'rgba(0, 123, 255, 0.7)' },
+        { label: 'Validados', data: compData.map(d => d.validados), backgroundColor: 'rgba(40, 167, 69, 0.7)' }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true } },
+      plugins: { legend: { position: 'top' } }
+    }
+  });
+
+  // donut de asistencia general con número centrado (plugin correcto)
+  const ctxAsis = document.getElementById("chartAsistencia").getContext("2d");
+  const centerTextPlugin = {
+    id: "centerText",
+    beforeDraw(chart) {
+      const {width, height, ctx} = chart;
+      ctx.save();
+      const fontSize = (height / 140).toFixed(2);
+      ctx.font = fontSize + "em sans-serif";
+      ctx.textBaseline = "middle";
+      const text = asistencia.toFixed(1) + "%";
+      const textX = Math.round((width - ctx.measureText(text).width) / 2);
+      const textY = height / 2;
+      ctx.fillStyle = "#198754";
+      ctx.fillText(text, textX, textY);
+      ctx.restore();
+    }
+  };
+
+  // Actualizar barra de asistencia (KPI)
+    const bar = document.getElementById('asistenciaBar');
+    bar.style.width = asistencia + '%';
+    bar.setAttribute('aria-valuenow', asistencia);
+    bar.textContent = asistencia.toFixed(1) + '%';
+
+    // (Opcional) cambia el color según umbrales
+    bar.classList.remove('bg-success','bg-warning','bg-danger');
+    if (asistencia >= 80) {
+    bar.classList.add('bg-success');
+    } else if (asistencia >= 50) {
+    bar.classList.add('bg-warning');
+    } else {
+    bar.classList.add('bg-danger');
+    }
+
+
+  // actualizar totales
+  const cards = document.querySelectorAll('.card h2');
+  cards[0].textContent = data.resumen.emitidos;
+  cards[1].textContent = data.resumen.validados;
+  cards[2].textContent = data.resumen.anulados;
+  cards[3].textContent = data.resumen.asistencia + '%';
+}
+
+// inicialización con datos del servidor
+renderCharts({
+  tipos: JSON.parse(document.getElementById('tipos-data').textContent),
+  validados_tipo: JSON.parse(document.getElementById('validados-tipo').textContent),
+  validados_dia: JSON.parse(document.getElementById('validados-dia').textContent),
+  emitidos_vs_validados: JSON.parse(document.getElementById('emitidos-vs-validados').textContent),
+  resumen: {
+    emitidos: {{ resumen.emitidos|default:0 }},
+    validados: {{ resumen.validados|default:0 }},
+    anulados: {{ resumen.anulados|default:0 }},
+    asistencia: {{ resumen.asistencia|default:0|floatformat:2 }},
+  }
+});
+
+// filtros de fecha
+document.getElementById('btnFiltrar').addEventListener('click', async () => {
+  const desde = document.getElementById('desde').value;
+  const hasta = document.getElementById('hasta').value;
+  const url = `{% url 'orders:event-summary-data' evento.id %}?desde=${desde}&hasta=${hasta}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  renderCharts(data);
+});
+
+document.getElementById('btnReset').addEventListener('click', async () => {
+  document.getElementById('desde').value = '';
+  document.getElementById('hasta').value = '';
+  const res = await fetch(`{% url 'orders:event-summary-data' evento.id %}`);
+  const data = await res.json();
+  renderCharts(data);
+});
+</script>
+
+{% endblock %}

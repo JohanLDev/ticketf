@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load static %} 
+{% block content %}
+<div class="container" style="max-width:820px;">
+  <div class="card" style="padding:24px; border-radius:12px;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <img src="{% static 'orders/img/transbank-logo.png' %}" alt="Transbank" style="height:60px;">
+      
+      <div>
+        <h2 style="margin:0;">Pagar ticket (simulación)</h2>
+        <div class="text-muted">Pago simulado — no se procesan pagos reales.</div>
+      </div>
+    </div>
+
+    <hr>
+
+    <div id="summary" class="mb-3">
+        <div>Resumen</div>
+        <div id="summary-lines" class="text-muted">—</div>
+
+        <div class="mt-3"><b>Subtotal:</b> <span id="subt">$0</span></div>
+        <div><b>Descuento:</b> <span id="disc">$0</span></div>
+        <div><b>Total:</b> <span id="tot">$0</span></div>
+    </div>
+
+    <form id="payment-form" class="mt-3">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label">Número de tarjeta</label>
+        <input id="card-number" class="form-control" placeholder="4111 1111 1111 1111" autocomplete="off">
+    </div>
+
+    <div class="d-flex gap-2">
+        <div class="flex-1">
+        <label class="form-label">Fecha (MM/AA)</label>
+        <input id="card-exp" class="form-control" placeholder="08/25" autocomplete="off">
+        </div>
+        <div style="width:140px">
+        <label class="form-label">CVC</label>
+        <input id="card-cvc" class="form-control" placeholder="123" autocomplete="off">
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{% url 'orders:public-checkout-step3' event.slug %}" class="btn btn-secondary">Volver</a>
+        <button id="pay-btn" class="btn btn-primary">PAGAR</button>
+    </div>
+    </form>
+
+    <div id="payment-msg" class="mt-3"></div>
+  </div>
+</div>
+
+
+<script>
+(function () {
+  const fmt = n => (Number(n)||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0});
+
+  // Cargar resumen y totales desde sessionStorage
+  try {
+    const totals  = JSON.parse(sessionStorage.getItem('checkout_totals') || 'null');
+    const payload = JSON.parse(sessionStorage.getItem('checkout_payload') || 'null');
+
+    if (payload?.items?.length) {
+      const lines = payload.items.map(it => `${it.cantidad} × Ticket #${it.tipo_ticket_id}`);
+      document.getElementById('summary-lines').textContent = lines.join(' · ');
+    }
+
+    if (totals) {
+      document.getElementById('subt').textContent = fmt(totals.subtotal);
+      document.getElementById('disc').textContent = fmt(totals.discount);
+      document.getElementById('tot').textContent  = fmt(totals.total);
+    }
+  } catch {}
+
+  // Enviar checkout real (simulado) al presionar PAGAR
+  document.getElementById('payment-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('pay-btn');
+    btn.disabled = true;
+
+    const payload = JSON.parse(sessionStorage.getItem('checkout_payload') || 'null');
+    if (!payload) {
+      alert('La sesión del checkout expiró. Volviendo al inicio.');
+      window.location.href = "{% url 'orders:public-checkout-step1' event.slug %}";
+      return;
+    }
+
+    // Si por alguna razón viene sin buyer, lo completamos desde checkout_buyer
+    if (!payload.buyer) {
+    const buyerFallback = JSON.parse(sessionStorage.getItem('checkout_buyer') || 'null');
+    if (buyerFallback) {
+        payload.buyer = buyerFallback;
+        sessionStorage.setItem('checkout_payload', JSON.stringify(payload));
+    }
+    }
+
+
+    const promo = JSON.parse(sessionStorage.getItem('checkout_promo') || 'null');
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    try {
+        const res = await fetch("/orders/api/checkout/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+            credentials: "same-origin",
+            body: JSON.stringify({
+                evento_slug: "{{ event.slug }}",
+                comprador_email: payload.buyer?.email || "",
+                items: payload.items,
+                buyer: payload.buyer || {},
+                promo_code: promo?.code || null
+            })
+        });
+
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || "Error en checkout.");
+        btn.disabled = false;
+        return;
+      }
+
+      // Limpio sesión para que no se arrastre a una compra nueva
+      ['checkout_cart','checkout_totals','checkout_promo','checkout_payload','checkout_buyer']
+        .forEach(k => sessionStorage.removeItem(k));
+
+      // A éxito
+      window.location.href = `/orders/public/checkout/success/${data.order_id}/`;
+    } catch {
+      alert("No se pudo conectar con el servidor.");
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+
+
+{% endblock %}
+

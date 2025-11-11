@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Panel Admin{% endblock %}
+{% block content %}
+<h1>Panel de Administración — {{ cuenta.nombre }}</h1>
+<p class="text-muted">Plan: {{ cuenta.plan|title }} · Estado: {{ cuenta.estado|title }}</p>
+<hr>
+<ul>
+  <li><a href="{% url 'events:list' %}">Eventos</a></li>
+  <li><a href="#">Tipos de ticket (próximo)</a></li>
+  <li><a href="{% url 'orders:list' %}">Órdenes y tickets</a></li>
+  <li><a href="{% url 'tickets:discounts_list' %}">Descuentos</a></li>
+  <li><a href="{% url 'orders:validator' %}">Validador (escáner)</a></li>
+  
+</ul>
+
+<a class="btn btn-outline-secondary" href="{% url 'accounts:select_account' %}">Cambiar de cuenta</a>
+{% endblock %}

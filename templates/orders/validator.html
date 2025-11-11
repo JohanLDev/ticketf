@@ -1,0 +1,154 @@
+{% extends "base.html" %}{% block title %}Validador{% endblock %}
+{% block content %}
+<style>
+  :root{
+    --ok:#d9fbe5; --ok-border:#2e7d32;
+    --bad:#ffe1df; --bad-border:#c62828;
+    --warn:#fff5cc; --warn-border:#b28704;
+  }
+  .wrap{max-width:900px;margin:auto}
+  #code{font-size:28px;height:58px}
+  .banner{margin-top:18px;padding:14px 16px;border-radius:10px;border:2px solid transparent;font-size:20px}
+  .banner.ok{background:var(--ok);border-color:var(--ok-border)}
+  .banner.bad{background:var(--bad);border-color:var(--bad-border)}
+  .banner.warn{background:var(--warn);border-color:var(--warn-border)}
+  .row-flex{display:flex;gap:10px;align-items:center;margin-top:10px}
+  .chip{padding:6px 10px;border-radius:999px;border:1px solid #ddd;font-size:13px}
+  .muted{color:#666}
+  .history{margin-top:18px}
+  .history table{width:100%}
+  .history td, .history th{padding:8px 6px;border-bottom:1px solid #eee;font-size:14px}
+  .hcode{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+</style>
+
+<div class="wrap">
+  <h1>Validador de tickets</h1>
+  <p class="muted">Escanea el código o escribe y presiona Enter.</p>
+
+  <input id="code" class="form-control" placeholder="pega/escanea código" autofocus autocomplete="off" autocapitalize="off" spellcheck="false">
+
+  <div class="row-flex">
+    <button id="btn-full" class="btn btn-outline-secondary btn-sm">Pantalla completa</button>
+    <label class="chip"><input type="checkbox" id="sound" checked> Sonido</label>
+    <label class="chip"><input type="checkbox" id="big" checked> Alto contraste</label>
+  </div>
+
+  <div id="result" class="banner warn" style="display:none"></div>
+
+  <div class="history">
+    <h5>Últimas lecturas</h5>
+    <table>
+      <thead><tr><th style="width:32%">Código</th><th>Estado</th><th>Hora</th><th>Evento</th></tr></thead>
+      <tbody id="hist"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+/* ---------- CSRF ---------- */
+function getCookie(name){
+  const value = `; ${document.cookie}`; const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+const csrftoken = getCookie('csrftoken');
+
+/* ---------- UI helpers ---------- */
+const $ = (q)=>document.querySelector(q);
+const input = $('#code');
+const out = $('#result');
+const hist = $('#hist');
+const soundOn = $('#sound');
+const bigOn = $('#big');
+
+function banner(cls, html){
+  out.className = `banner ${cls}`;
+  out.innerHTML = html;
+  out.style.display = 'block';
+}
+
+/* Beeps con WebAudio (sin archivos) */
+let actx = null;
+function beep(freq=880, ms=120, type='sine'){
+  if(!soundOn.checked) return;
+  if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = freq;
+  o.connect(g); g.connect(actx.destination);
+  g.gain.setValueAtTime(0.001, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.4, actx.currentTime+0.01);
+  o.start();
+  setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+0.05); o.stop(actx.currentTime+0.06); }, ms);
+}
+
+function pushHistory(code, estado, evento){
+  const tr = document.createElement('tr');
+  const hh = new Date().toLocaleTimeString();
+  tr.innerHTML = `<td class="hcode">${code}</td><td>${estado}</td><td>${hh}</td><td>${evento||'—'}</td>`;
+  hist.prepend(tr);
+  while(hist.children.length>5) hist.removeChild(hist.lastChild);
+}
+
+/* ---------- Validación ---------- */
+let lastCode = null, lastTs = 0;
+async function validar(code){
+  // Ignora doble lectura en 1.2s
+  const now = Date.now();
+  if(code===lastCode && (now-lastTs)<1200) return;
+  lastCode = code; lastTs = now;
+
+  banner('warn', 'Validando…'); beep(600,50,'triangle');
+
+  try{
+    const r = await fetch(`/orders/validate/${code}/`, {
+      method:'POST',
+      headers:{'X-CSRFToken': csrftoken, 'X-Requested-With':'fetch'}
+    });
+    const data = await r.json();
+
+    if(r.ok){
+      banner('ok', `✅ <b>Ticket válido</b> — <b>${data.tipo}</b><br><small>${data.code}</small> — <b>${data.evento}</b>`);
+
+      document.body.style.background = bigOn.checked ? '#e7ffee' : '';
+      beep(880,120,'square'); setTimeout(()=>beep(1175,120,'square'),120);
+      pushHistory(code, '✅ válido', `${data.evento} · ${data.tipo}`);
+    }else{
+      let msg = data.error === 'ALREADY_USED'
+        ? `⚠️ <b>Ticket ya usado</b> — <b>${data.tipo || ''}</b><br><small>${data.used_at}</small>`
+        : '❌ <b>Ticket no válido</b>';
+      banner('bad', msg);
+      document.body.style.background = bigOn.checked ? '#ffefef' : '';
+      beep(220,220,'sawtooth');
+      pushHistory(code, data.error==='ALREADY_USED' ? '⚠️ usado' : '❌ inválido', `${data.evento || '—'} · ${data.tipo || ''}`);
+    }
+  }catch(e){
+    banner('warn','Problema de red'); document.body.style.background = '';
+    pushHistory(code,'⚠️ red');
+  }finally{
+    setTimeout(()=>{ if(bigOn.checked) document.body.style.background=''; }, 1400);
+  }
+}
+
+/* Enter para validar y detector por input (por si el lector no envía Enter) */
+input.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){
+    const code = input.value.trim();
+    if(code){ validar(code); input.value=''; }
+  }
+});
+const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+let autoT;
+input.addEventListener('input', (e)=>{
+  const v = e.target.value.trim();
+  clearTimeout(autoT);
+  autoT = setTimeout(()=>{
+    if(uuidRe.test(v)){ validar(v); e.target.value=''; }
+  }, 60);
+});
+
+/* Fokus persistente y pantalla completa */
+setInterval(()=>{ if(document.activeElement!==input) input.focus(); }, 800);
+$('#btn-full').onclick = ()=>{ const el=document.documentElement;
+  if(!document.fullscreenElement){ el.requestFullscreen?.(); } else { document.exitFullscreen?.(); }
+};
+</script>
+{% endblock %}

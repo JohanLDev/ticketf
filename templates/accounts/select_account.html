@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Seleccionar cuenta{% endblock %}
+{% block content %}
+<h1>Selecciona tu cuenta</h1>
+<form method="post" class="mt-3">
+  {% csrf_token %}
+  <div class="list-group">
+    {% for c in cuentas %}
+      <label class="list-group-item">
+        <input type="radio" name="cuenta_id" value="{{ c.id }}" required> {{ c.nombre }} ({{ c.plan }})
+      </label>
+    {% empty %}
+      <div class="alert alert-warning">Tu usuario no tiene cuentas asignadas.</div>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary mt-3">Entrar</button>
+</form>
+{% endblock %}

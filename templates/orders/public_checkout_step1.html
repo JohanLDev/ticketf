@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width:1000px;">
+  <h1>Comprar tickets — {{ event.nombre }}</h1>
+
+  <div class="row" style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
+    <div class="card" style="border:1px solid #e6e6e6;border-radius:12px;">
+      <div class="card-body" style="padding:16px;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th style="width:120px;">Precio</th>
+              <th style="width:160px;">Cantidad</th>
+              <th style="width:120px;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tipos %}
+              {% with max_qty=t.max_per_order|default:10 %}
+              <tr class="item-row"
+                  data-id="{{ t.id }}"
+                  data-name="{{ t.nombre }}"
+                  data-price="{{ t.precio }}"
+                  data-max="{% if t.is_parking %}1{% else %}{{ max_qty }}{% endif %}"
+                  data-is-parking="{% if t.is_parking %}1{% else %}0{% endif %}">
+                <td>
+                  {{ t.nombre }}
+                  {% if t.is_parking %}<small class="text-muted">(Estacionamiento)</small>{% endif %}
+                </td>
+                <td>$ {{ t.precio }}</td>
+                <td>
+                  <div class="input-group" style="max-width:160px;">
+                    <button class="btn btn-outline-secondary btn-minus" type="button">−</button>
+                    <input class="form-control qty-input" type="number" value="0" min="0"
+                          max="{% if t.is_parking %}1{% else %}{{ max_qty }}{% endif %}">
+                    <button class="btn btn-outline-secondary btn-plus" type="button">+</button>
+                  </div>
+                  {% if t.is_parking %}
+                    <div class="form-text">Máx. 1 por orden</div>
+                  {% endif %}
+                </td>
+                <td class="cell-subtotal">$ 0</td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+
+            <!-- Código promocional (arriba de la tabla) -->
+            <div id="promo-wrap" class="mt-3">
+              <p class="text-sm text-gray-600">
+                ¿Tienes un código de descuento, promocional o cortesía?
+                <a href="#" id="promo-toggle" class="text-blue-600">Presiona AQUÍ.</a>
+              </p>
+
+              <div id="promo-box" class="d-none mt-2">
+                <div class="d-flex gap-2">
+                  <input id="promo-input" type="text" class="form-control" placeholder="Ingresa tu código">
+                  <button id="promo-apply" class="btn btn-outline-primary">Aplicar</button>
+                </div>
+                <div id="promo-msg" class="text-sm mt-2"></div>
+              </div>
+            </div>
+
+          </tbody>
+
+          
+
+
+          <tfoot>
+            <tr>
+              <th colspan="3" class="text-end">Subtotal</th>
+              <th id="subtotal-amount">$ 0</th>
+            </tr>
+            <tr>
+              <th colspan="3" class="text-end">Descuento</th>
+              <th id="discount-amount">$ 0</th>
+            </tr>
+            <tr>
+              <th colspan="3" class="text-end">Total</th>
+              <th id="total-amount">$ 0</th>
+            </tr>
+          </tfoot>
+
+        </table>
+
+       
+
+      </div>
+    </div>
+
+    <div class="card" style="border:1px solid #e6e6e6;border-radius:12px;">
+      <div class="card-body" style="padding:16px;">
+        <h5>Resumen</h5>
+        <div id="summary" class="text-muted">Sin selecciones.</div>
+        <hr>
+        <button id="continue-btn" class="btn btn-primary w-100" disabled>Continuar</button>
+        <a href="{% url 'orders:public-event' event.slug %}" class="btn btn-secondary w-100 mt-2">Volver</a>
+        <div class="form-text mt-2">Próximo paso: formulario del comprador (no hay pasarela, pago simulado).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% csrf_token %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<script>
+
+  (() => {
+  const slug = "{{ event.slug }}";
+
+  function clearAll() {
+    ['checkout_cart','checkout_totals','checkout_payload','checkout_promo','checkout_buyer']
+      .forEach(k => sessionStorage.removeItem(k));
+  }
+
+  // 2.1 Si vienes de una compra finalizada para este evento, arranca limpio
+  if (sessionStorage.getItem('checkout_cleared_for') === slug) {
+    clearAll();
+    sessionStorage.removeItem('checkout_cleared_for');
+  }
+
+  // 2.2 Si el payload existente corresponde a OTRO evento, limpia
+  try {
+    const p = JSON.parse(sessionStorage.getItem('checkout_payload') || 'null');
+    if (p && p.evento_slug && p.evento_slug !== slug) clearAll();
+  } catch {}
+
+  // (el resto de tu lógica de Step 1 sigue igual)
+})();
+
+(function(){
+  const rows = [...document.querySelectorAll('.item-row')];
+  const money = (n)=> new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',minimumFractionDigits:0}).format(n);
+  function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+  const saved = JSON.parse(sessionStorage.getItem('checkout_cart') || '[]');
+  if (saved.length) {
+    const map = new Map(saved.map(it => [String(it.tipo_ticket_id), it.cantidad]));
+    rows.forEach(row=>{
+      const id = String(Number(row.dataset.id));
+      const input = row.querySelector('.qty-input');
+      if (map.has(id)) input.value = map.get(id);
+    });
+  }
+
+  function recalc(){
+    let subtotal = 0, summary = [];
+    let hasSelection = false;
+
+    rows.forEach(row=>{
+      const price = Number(row.dataset.price);
+      const max = Number(row.dataset.max || 10);
+      const input = row.querySelector('.qty-input');
+      const qty = clamp(Number(input.value||0), 0, max);
+      input.value = qty;
+      const sub = qty * price;
+      row.querySelector('.cell-subtotal').textContent = money(sub);
+      subtotal += sub;
+      if(qty>0){
+        hasSelection = true;
+        summary.push(`${qty} × ${row.dataset.name}`);
+      }
+    });
+
+    // Promo guardado por el script de promo
+    let promo = null;
+    try { promo = JSON.parse(sessionStorage.getItem('checkout_promo') || 'null'); } catch {}
+    const discount = (() => {
+      if (!promo) return 0;
+      if (promo.kind === 'percent') return Math.floor((subtotal * promo.value) / 100);
+      if (promo.kind === 'fixed')   return Math.min(promo.value, subtotal);
+      return 0;
+    })();
+    const total = Math.max(subtotal - discount, 0);
+
+    // guarda carrito
+    const items = [];
+    rows.forEach(row=>{
+      const qty = Number(row.querySelector('.qty-input').value||0);
+      if (qty>0) items.push({ tipo_ticket_id:Number(row.dataset.id), cantidad:qty });
+    });
+    sessionStorage.setItem('checkout_cart', JSON.stringify(items));
+
+
+    document.getElementById('subtotal-amount').textContent = money(subtotal);
+    document.getElementById('discount-amount').textContent = discount ? ('− ' + money(discount)) : money(0);
+    document.getElementById('total-amount').textContent = money(total);
+    document.getElementById('summary').textContent = summary.length ? summary.join(' · ') : 'Sin selecciones.';
+
+    // Habilitar continuar SOLO si hay selección
+    document.getElementById('continue-btn').disabled = !hasSelection;
+    sessionStorage.setItem('checkout_totals', JSON.stringify({ subtotal, discount, total }));
+    
+  }
+
+  // expone para que el script de promo pueda recalcular
+  window._step1Recalc = recalc;
+
+  // botones +/- e input
+  rows.forEach(row=>{
+    const input = row.querySelector('.qty-input');
+    row.querySelector('.btn-minus').addEventListener('click', ()=>{ input.value = Math.max(0, Number(input.value||0)-1); recalc(); });
+    row.querySelector('.btn-plus').addEventListener('click', ()=>{
+      const max = Number(row.dataset.max || 10);
+      input.value = Math.min(max, Number(input.value||0)+1);
+      recalc();
+    });
+    input.addEventListener('input', recalc);
+  });
+  recalc();
+
+  // continuar → guardar selección y pasar al PASO 3
+  document.getElementById('continue-btn').addEventListener('click', ()=>{
+    const items = [];
+    let hasParking = false;
+    rows.forEach(row=>{
+      const qty = Number(row.querySelector('.qty-input').value||0);
+      if(qty>0){
+        items.push({ tipo_ticket_id: Number(row.dataset.id), cantidad: qty });
+        if(row.dataset.isParking === "1") hasParking = true;
+      }
+    });
+    if(!items.length) return;
+
+    const payload = {
+      evento_slug: "{{ event.slug }}",
+      items: items,
+      has_parking: hasParking
+    };
+    sessionStorage.setItem('checkout_payload', JSON.stringify(payload));
+    window.location.href = "{% url 'orders:public-checkout-step3' event.slug %}";
+  });
+})();
+</script>
+
+<script>
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+</script>
+
+<script>
+(() => {
+  let promo = null;
+  try { promo = JSON.parse(sessionStorage.getItem('checkout_promo') || 'null'); } catch {}
+
+  const $toggle = document.getElementById('promo-toggle');
+  const $box    = document.getElementById('promo-box');
+  const $input  = document.getElementById('promo-input');
+  const $apply  = document.getElementById('promo-apply');
+  const $msg    = document.getElementById('promo-msg');
+
+  // Toggle (Bootstrap)
+  $toggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    $box.classList.toggle('d-none');
+    if (promo?.code) $input.value = promo.code;
+  });
+
+  $apply.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const code = ($input.value || '').trim();
+    if (!code) { setPromo(null); info('Eliminado el código de descuento.'); return; }
+
+    // armar items desde la tabla
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+      const qty = Number(row.querySelector('.qty-input').value || 0);
+      if (qty > 0) items.push({ tipo_ticket_id: Number(row.dataset.id), cantidad: qty });
+    });
+
+    const csrftoken = getCookie('csrftoken');   // <- CSRF
+
+    try {
+      const res = await fetch("/orders/api/promo/validar/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken            // <- CSRF
+        },
+        credentials: "same-origin",            // <- envía cookies
+        body: JSON.stringify({
+          evento_slug: "{{ event.slug }}",
+          code: code,
+          items: items
+        })
+      });
+      const data = await res.json();
+      if (!data.ok) { setPromo(null); error(data.message || "Código inválido."); return; }
+
+      setPromo({ code, kind: 'fixed', value: Number(data.discount_amount || 0) });
+      ok(data.message || "Código aplicado.");
+    } catch (_e) {
+      error("No se pudo validar el código. Intenta nuevamente.");
+    }
+  });
+
+  function setPromo(p){
+    promo = p;
+    if (p) sessionStorage.setItem('checkout_promo', JSON.stringify(p));
+    else   sessionStorage.removeItem('checkout_promo');
+    if (typeof window._step1Recalc === 'function') window._step1Recalc();
+  }
+
+  function ok(t){ $msg.textContent=t; $msg.className='text-sm mt-2 text-success'; }
+  function error(t){ $msg.textContent=t; $msg.className='text-sm mt-2 text-danger'; }
+  function info(t){ $msg.textContent=t; $msg.className='text-sm mt-2 text-muted'; }
+})();
+</script>
+
+
+{% endblock %}

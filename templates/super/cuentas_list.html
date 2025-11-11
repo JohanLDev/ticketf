@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Cuentas{% endblock %}
+{% block content %}
+<h1>Cuentas</h1>
+<a class="btn btn-primary mb-3" href="{% url 'accounts:super_crear_cuenta' %}">Crear cuenta</a>
+<table class="table">
+  <tr><th>Nombre</th><th>Plan</th><th>Estado</th><th></th></tr>
+  {% for c in cuentas %}
+  <tr>
+    <td>{{ c.nombre }}</td><td>{{ c.plan }}</td><td>{{ c.estado }}</td>
+    <td><a class="btn btn-sm btn-outline-secondary" href="{% url 'accounts:super_asignar_admin' c.id %}">Asignar ADMIN</a></td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="4">Sin cuentas.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

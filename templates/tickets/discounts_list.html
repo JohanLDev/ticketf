@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="container" style="max-width:1000px;">
+  <h1>Descuentos</h1>
+  <div class="mb-3">
+    <a class="btn btn-primary" href="{% url 'tickets:discounts_create' %}">Crear descuento</a>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nombre</th>
+        <th>Evento</th>
+        <th>Tipo ticket</th>
+        <th>Monto</th>
+        <th>Usos</th>
+        <th>Vigencia</th>
+        <th>Activo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in items %}
+      <tr>
+        <td><code>{{ d.codigo }}</code></td>
+        <td>{{ d.nombre }}</td>
+        <td>{{ d.evento.nombre }}</td>
+        <td>{% if d.tipo_ticket %}{{ d.tipo_ticket.nombre }}{% else %}<em>Todos</em>{% endif %}</td>
+        <td>${{ d.monto_descuento|intcomma }}</td>
+        <td>{{ d.usos_actuales }}/{{ d.usos_maximos }}</td>
+        <td>
+          {% if d.vigente_desde %}{{ d.vigente_desde }}{% else %}-{% endif %} —
+          {% if d.vigente_hasta %}{{ d.vigente_hasta }}{% else %}-{% endif %}
+        </td>
+        <td>{{ d.activo|yesno:"Sí,No" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-muted">Aún no hay descuentos creados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

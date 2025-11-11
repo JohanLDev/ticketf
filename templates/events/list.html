@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% block title %}Eventos{% endblock %}
+{% block content %}
+<h1>Eventos — {{ cuenta.nombre }}</h1>
+<a class="btn btn-primary mb-3" href="{% url 'events:create' %}">Crear evento</a>
+<table class="table">
+<tr><th>Nombre</th><th>Estado</th><th>Fechas</th><th></th></tr>
+{% for e in eventos %}
+<tr>
+  <td>{{ e.nombre }}</td>
+  <td>{{ e.estado }}</td>
+  <td>{{ e.fecha_inicio }}{% if e.fecha_termino %} — {{ e.fecha_termino }}{% endif %}</td>
+  <td>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'tickets:list' e.pk %}">Tipos de ticket</a>
+    <a class="btn btn-sm btn-outline-info" href="{% url 'orders:event-analytics' e.id %}">Analítica</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'events:edit' e.pk %}">Editar</a>
+    <a class="btn btn-sm btn-outline-danger" href="{% url 'events:delete' e.pk %}">Eliminar</a>
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="4">Sin eventos.</td></tr>
+{% endfor %}
+</table>
+<a class="btn btn-outline-secondary" href="{% url 'accounts:admin_dashboard' %}">Volver</a>
+{% endblock %}
