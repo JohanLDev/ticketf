@@ -1,7 +1,9 @@
 {% extends "base.html" %}{% block title %}Tipos de ticket{% endblock %}
 {% block content %}
+
+<div class="container container-int">
 <h1>Tipos de ticket — {{ evento.nombre }}</h1>
-<a class="btn btn-primary mb-3" href="{% url 'tickets:create' evento.id %}">Crear tipo</a>
+<a class="btn btn-primary mb-3 a-site" href="{% url 'tickets:create' evento.id %}">Crear tipo</a>
 <table class="table">
 <tr><th>Nombre</th><th>Precio</th><th>Política</th><th>Reingreso</th><th>Activo</th><th></th></tr>
 {% for t in tipos %}
@@ -20,5 +22,6 @@
 <tr><td colspan="6">Sin tipos de ticket.</td></tr>
 {% endfor %}
 </table>
-<a class="btn btn-outline-secondary" href="{% url 'events:list' %}">Volver a eventos</a>
+<a class="btn btn-outline-secondary a-site" href="{% url 'events:list' %}">Volver a eventos</a>
+</div>
 {% endblock %}

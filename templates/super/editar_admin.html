@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Editar admin{% endblock %}
+
+{% block content %}
+<div class="container container-int">
+
+<form method="post" class="mt-3 form-general">
+  <h1>Editar admin de {{ cuenta.nombre }}</h1>
+
+  {% csrf_token %}
+
+  <div class="mb-3">
+    <label class="form-label">Nombre</label>
+    {{ form.nombre }}
+    {% if form.nombre.errors %}
+      <div class="text-danger small">
+        {{ form.nombre.errors.0 }}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">
+      Nueva contraseña <small class="text-muted">(dejar en blanco para no cambiar)</small>
+    </label>
+    {{ form.password }}
+    {% if form.password.errors %}
+      <div class="text-danger small">
+        {{ form.password.errors.0 }}
+      </div>
+    {% endif %}
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-site">Guardar cambios</button>
+  <a href="{% url 'accounts:ver_admins' cuenta.id %}" class="btn btn-secondary ms-2 a-site">
+    Cancelar
+  </a>
+</form>
+
+</div>
+{% endblock %}

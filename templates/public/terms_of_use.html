@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Términos de uso — Ticket-F{% endblock %}
+
+{% block content %}
+
+<div class="container container-int container-int-policy">
+<h1>Términos de uso</h1>
+<p class="text-muted">
+  Estos términos regulan el acceso y uso de la plataforma Ticket-F por parte 
+  de organizadores de eventos y compradores de tickets.
+</p>
+
+<h2>1. Aceptación de los términos</h2>
+<p>
+  Al crear una cuenta, administrar eventos o comprar tickets en Ticket-F, 
+  aceptas estos Términos de uso y nuestra Política de privacidad.
+  Si no estás de acuerdo, no debes utilizar la plataforma.
+</p>
+
+<h2>2. Cuentas y responsabilidades</h2>
+<ul>
+  <li>Eres responsable de la veracidad de los datos que registras al crear tu cuenta.</li>
+  <li>Debes mantener la confidencialidad de tu contraseña y notificar a Ticket-F ante cualquier uso no autorizado.</li>
+  <li>No está permitido utilizar la plataforma para actividades ilegales, fraudulentas o que infrinjan derechos de terceros.</li>
+</ul>
+
+<h2>3. Rol de Ticket-F</h2>
+<p>
+  Ticket-F actúa como plataforma tecnológica que facilita la emisión, gestión y validación de tickets.
+  Cada evento es organizado por un tercero (“Organizador”), quien es responsable del contenido del evento,
+  su realización, cambios de fecha, reembolsos y condiciones de acceso, salvo que se indique expresamente lo contrario.
+</p>
+
+<h2>4. Compras y tickets</h2>
+<ul>
+  <li>Al completar una compra, recibirás un comprobante y los tickets asociados, usualmente en formato digital (por ejemplo, códigos QR).</li>
+  <li>Los cargos por servicio, comisiones y políticas de devolución se informarán en el flujo de compra de cada evento, según lo defina el Organizador y la normativa aplicable. :contentReference[oaicite:5]{index=5}</li>
+  <li>Es responsabilidad del comprador revisar la fecha, lugar, edad mínima y demás condiciones del evento antes de confirmar la compra.</li>
+</ul>
+
+<h2>5. Uso aceptable de la plataforma</h2>
+<p>No puedes:</p>
+<ul>
+  <li>Revender tickets utilizando Ticket-F de manera no autorizada.</li>
+  <li>Intentar vulnerar la seguridad del sistema, acceder a cuentas ajenas o manipular reportes.</li>
+  <li>Utilizar datos de otros usuarios sin su consentimiento.</li>
+</ul>
+
+<h2>6. Propiedad intelectual</h2>
+<p>
+  El software, el diseño de la plataforma y el logo de Ticket-F son de nuestra titularidad
+  o se usan bajo licencia. No se concede ningún derecho de explotación más allá del uso normal
+  del servicio.
+</p>
+
+<h2>7. Limitación de responsabilidad</h2>
+<p>
+  Haremos esfuerzos razonables para mantener la plataforma disponible y segura, 
+  pero no garantizamos ausencia total de errores, caídas o interrupciones.
+  Salvo que la ley disponga lo contrario, la responsabilidad de Ticket-F frente a organizadores
+  y compradores se limita al monto efectivamente pagado por los servicios de Ticket-F 
+  relacionados con el incidente.
+</p>
+
+<h2>8. Modificaciones a los términos</h2>
+<p>
+  Podemos modificar estos Términos de uso en cualquier momento. Los cambios serán efectivos
+  desde su publicación en este sitio. El uso continuado de la plataforma implica la aceptación
+  de los nuevos términos.
+</p>
+
+<h2>9. Contacto</h2>
+<p>
+  Para consultas sobre estos términos, escríbenos a 
+  <a href="mailto:soporte@ticket-f.cl">soporte@ticket-f.cl</a>.
+</p>
+
+<p class="text-muted mt-4">
+  Última actualización: {{ today|default:"2025" }}
+</p>
+
+</div>
+{% endblock %}

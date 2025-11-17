@@ -21,6 +21,8 @@
   .hcode{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
 </style>
 
+<div class="container container-int">
+
 <div class="wrap">
   <h1>Validador de tickets</h1>
   <p class="muted">Escanea el código o escribe y presiona Enter.</p>
@@ -31,7 +33,26 @@
     <button id="btn-full" class="btn btn-outline-secondary btn-sm">Pantalla completa</button>
     <label class="chip"><input type="checkbox" id="sound" checked> Sonido</label>
     <label class="chip"><input type="checkbox" id="big" checked> Alto contraste</label>
+    <button id="btn-open-camera" class="btn btn-outline-primary btn-sm">
+      Usar cámara (QR)
+    </button>
   </div>
+
+  <div id="camera-controls" style="display:none; margin-top:8px;">
+    <div class="small mb-1">Cámara:</div>
+    <div id="camera-list" class="btn-group btn-group-sm" role="group">
+      <!-- Acá JS va a inyectar los botones de cada cámara -->
+    </div>
+  </div>
+
+
+  <div id="qr-wrapper" style="display:none; margin-top:12px;">
+    <div id="qr-reader" style="max-width:400px; margin:0 auto;"></div>
+    <p class="muted small" style="text-align:center; margin-top:6px;">
+      Apunta la cámara al código QR. Se validará automáticamente.
+    </p>
+  </div>
+
 
   <div id="result" class="banner warn" style="display:none"></div>
 
@@ -43,6 +64,11 @@
     </table>
   </div>
 </div>
+
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
 
 <script>
 /* ---------- CSRF ---------- */
@@ -150,5 +176,158 @@ setInterval(()=>{ if(document.activeElement!==input) input.focus(); }, 800);
 $('#btn-full').onclick = ()=>{ const el=document.documentElement;
   if(!document.fullscreenElement){ el.requestFullscreen?.(); } else { document.exitFullscreen?.(); }
 };
+
+
+/* ---------- Escaneo de QR con cámara + selección de dispositivo (botones) + MODO CONTINUO ---------- */
+const btnOpenCamera  = document.getElementById("btn-open-camera");
+const qrWrapper      = document.getElementById("qr-wrapper");
+const cameraControls = document.getElementById("camera-controls");
+const cameraList     = document.getElementById("camera-list");
+const qrRegionId     = "qr-reader";
+
+let html5QrCode      = null;
+let isScanning       = false;
+let cameras          = [];
+let currentCameraId  = null;
+
+// Para evitar leer el mismo código muchas veces seguidas
+let lastScannedCode  = null;
+let lastScannedAt    = 0;
+
+function setActiveCameraButton(camId) {
+  if (!cameraList) return;
+  [...cameraList.querySelectorAll("button")].forEach(btn => {
+    if (btn.dataset.camId === camId) {
+      btn.classList.add("btn-primary");
+      btn.classList.remove("btn-outline-secondary");
+    } else {
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-outline-secondary");
+    }
+  });
+}
+
+function startScanner(cameraId) {
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode(qrRegionId);
+  }
+
+  // si ya está escaneando, detener antes de cambiar de cámara
+  if (isScanning) {
+    html5QrCode.stop().then(() => {
+      isScanning = false;
+      html5QrCode.clear();
+      runScanner(cameraId);
+    }).catch(err => {
+      console.error("Error al detener cámara:", err);
+    });
+  } else {
+    runScanner(cameraId);
+  }
+}
+
+function runScanner(cameraId) {
+  html5QrCode.start(
+    cameraId,
+    {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+    },
+    function onScanSuccess(decodedText, decodedResult) {
+      const now = Date.now();
+
+      // 🔁 Evitar validar el mismo código muchas veces en muy poco tiempo
+      if (decodedText === lastScannedCode && (now - lastScannedAt) < 1500) {
+        return; // ignoramos esta lectura
+      }
+
+      lastScannedCode = decodedText;
+      lastScannedAt   = now;
+
+      // Aquí usas tu lógica actual
+      input.value = decodedText;
+      validar(decodedText);
+      input.value = "";
+
+      // 👇 IMPORTANTE: NO detener la cámara en modo continuo
+      // Nada de html5QrCode.stop() aquí
+    },
+    function onScanFailure(errorMessage) {
+      // errores de lectura se ignoran, la cámara sigue
+    }
+  ).then(() => {
+    isScanning = true;
+    qrWrapper.style.display = "block";
+    setActiveCameraButton(cameraId);
+  }).catch(err => {
+    console.error("No se pudo iniciar la cámara:", err);
+    isScanning = false;
+  });
+}
+
+if (btnOpenCamera) {
+  btnOpenCamera.addEventListener("click", function () {
+    // si ya cargamos las cámaras antes:
+    if (cameras.length > 0) {
+      qrWrapper.style.display = "block";
+      cameraControls.style.display = "block";
+      if (!isScanning && currentCameraId) {
+        startScanner(currentCameraId);
+      }
+      return;
+    }
+
+    // primera vez: pedimos las cámaras al navegador
+    Html5Qrcode.getCameras()
+      .then(function (devices) {
+        if (!devices || devices.length === 0) {
+          alert("No se encontraron cámaras disponibles.");
+          return;
+        }
+
+        cameras = devices;
+        cameraList.innerHTML = "";
+        cameraControls.style.display = "block";
+        qrWrapper.style.display = "block";
+
+        // Elegimos por defecto:
+        //  - si hay webcam USB, la tomamos
+        //  - si no, la primera
+        let defaultIndex = 0;
+        devices.forEach((cam, index) => {
+          const label = cam.label || "";
+          if (label.toLowerCase().includes("usb") || label.toLowerCase().includes("webcam")) {
+            defaultIndex = index;
+          }
+        });
+
+        devices.forEach((cam, index) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn btn-outline-secondary";
+          btn.textContent = cam.label || `Cámara ${index + 1}`;
+          btn.dataset.camId = cam.id;
+
+          btn.addEventListener("click", () => {
+            if (cam.id !== currentCameraId) {
+              currentCameraId = cam.id;
+              startScanner(currentCameraId);
+            }
+          });
+
+          cameraList.appendChild(btn);
+        });
+
+        currentCameraId = devices[defaultIndex].id;
+        startScanner(currentCameraId);
+      })
+      .catch(function (err) {
+        console.error("No se pudieron obtener las cámaras:", err);
+      });
+  });
+}
+
+
+
 </script>
 {% endblock %}

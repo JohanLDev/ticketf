@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<div class="container container-int">
+
+
+<h1>Mi perfil</h1>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mt-4">
+  <li class="nav-item">
+    <a class="nav-link {% if active_tab == 'datos' %}active{% endif %}"
+       href="{% url 'accounts:profile' %}?tab=datos">
+      Mis datos
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if active_tab == 'tickets' %}active{% endif %}"
+       href="{% url 'accounts:profile' %}?tab=tickets">
+      Mis tickets
+    </a>
+  </li>
+</ul>
+
+<div class="mt-4">
+
+  <!-- ============================= -->
+  <!-- TAB: MIS TICKETS              -->
+  <!-- ============================= -->
+  {% if active_tab == 'tickets' %}
+  
+    {% if tickets %}
+      <div class="list-group">
+        {% for t in tickets %}
+          <div class="list-group-item py-4 block-ticket">
+
+            <!-- CABECERA DEL TICKET -->
+            <div class="d-flex justify-content-between align-items-center mb-3 my-tickets">
+              <div>
+                <strong>Evento:</strong> {{ t.evento.nombre }}<br>
+                <strong>Código:</strong> {{ t.code }}<br>
+                <strong>Tipo:</strong> {{ t.tipo.nombre }}<br>
+                <strong>Estado:</strong> {{ t.estado }}<br>
+                <strong>Usado:</strong>
+                  {% if t.fecha_uso %}
+                    {{ t.fecha_uso }}
+                  {% else %}
+                    —
+                  {% endif %}
+              </div>
+
+              <!-- QR -->
+              <div>
+                <img src="{% url 'orders:ticket_qr' t.code %}" 
+                     alt="QR {{ t.code }}"
+                     style="width:110px; border:1px solid #ddd; padding:4px; background:white;">
+              </div>
+            </div>
+
+            <!-- ACCIONES -->
+            <div class="d-flex gap-3 align-items-center">
+
+              <!-- Descargar PDF -->
+              <a class="btn btn-primary btn-sm a-site"
+                 href="{% url 'orders:ticket_pdf_user' t.code %}" target="_blank">
+                Descargar PDF
+              </a>
+
+              <!-- Ver detalle -->
+              <a href="{% url 'accounts:user_ticket_detail' t.id %}"
+                 class="btn btn-link btn-sm a-site">
+                Ver detalle
+              </a>
+
+            </div>
+
+          </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <p class="text-muted">No tienes tickets registrados.</p>
+    {% endif %}
+
+  {% endif %}
+
+
+  <!-- ============================= -->
+  <!-- TAB: MIS DATOS                -->
+  <!-- ============================= -->
+  {% if active_tab == 'datos' %}
+  
+    <form method="post" class="mt-3 form-general">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn btn-primary btn-site">Guardar cambios</button>
+    </form>
+
+  {% endif %}
+
+</div>
+
+</div>
+
+{% endblock %}

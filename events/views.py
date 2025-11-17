@@ -6,7 +6,24 @@ from .models import Evento
 class EventoForm(forms.ModelForm):
     class Meta:
         model = Evento
-        fields = ["nombre","estado","fecha_inicio","fecha_termino","ubicacion","banner_url"]
+        fields = [
+            "nombre",
+            "estado",
+            "fecha_inicio",
+            "fecha_termino",
+            "ubicacion",
+            "banner",      
+            "descripcion",
+        ]
+        widgets = {
+            "descripcion": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "class": "form-control",
+                }
+            ),
+        }
+
 
 @require_role("admin","staff")
 def event_list(request):
@@ -17,7 +34,7 @@ def event_list(request):
 @require_role("admin","staff")
 def event_create(request):
     cuenta = get_current_cuenta(request)
-    form = EventoForm(request.POST or None)
+    form = EventoForm(request.POST or None, request.FILES or None)  # 👈
     if request.method == "POST" and form.is_valid():
         e = form.save(commit=False)
         e.cuenta = cuenta
@@ -25,15 +42,17 @@ def event_create(request):
         return redirect("events:list")
     return render(request, "events/form.html", {"form": form, "title": "Crear evento"})
 
+
 @require_role("admin","staff")
 def event_edit(request, pk):
     cuenta = get_current_cuenta(request)
     obj = get_object_or_404(Evento, pk=pk, cuenta=cuenta)
-    form = EventoForm(request.POST or None, instance=obj)
+    form = EventoForm(request.POST or None, request.FILES or None, instance=obj)  # 👈
     if request.method == "POST" and form.is_valid():
         form.save()
         return redirect("events:list")
     return render(request, "events/form.html", {"form": form, "title": "Editar evento"})
+
 
 @require_role("admin","staff")
 def event_delete(request, pk):

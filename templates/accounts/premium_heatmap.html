@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Live Heatmap — {{ cuenta.nombre }}{% endblock %}
+
+{% block content %}
+
+
+<div class="container container-int">
+
+<h1 class="mb-3">
+  LIVE HEATMAP
+  <span class="badge bg-danger ms-2">LIVE</span>
+</h1>
+<p class="text-muted mb-4">
+  Visualiza en tiempo real el comportamiento de la asistencia a tus eventos.
+</p>
+
+<div class="border rounded-3 p-5 text-center">
+  <p class="mb-3">Aquí iría tu imagen o gráfico de heatmap.</p>
+  <p class="text-muted">Puedes reemplazar este bloque por una imagen o componente interactivo.</p>
+</div>
+
+<div class="text-center mt-4">
+    <a href="{% url 'accounts:admin_dashboard' %}" class="btn btn-outline-primary a-site">
+        ← Volver al Panel de Administración
+    </a>
+</div>
+
+</div>
+
+{% endblock %}

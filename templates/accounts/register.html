@@ -1,24 +1,359 @@
-{% extends "base.html" %} {% block title %}Crear cuenta{% endblock %} {% block
-content %}
-<h1>Crear cuenta</h1>
-<form method="post" class="mt-3">
-  {% csrf_token %}
-  <div class="mb-3">
-    <label>Email</label>
-    {{ form.email|add_class:"form-control" if form.email }} {% if not form.email
-    %}<input type="email" name="email" class="form-control" required />{% endif
-    %}
-  </div>
-  <div class="mb-3">
-    <label>Contraseña</label>
-    {{ form.password|add_class:"form-control" if form.password }} {% if not
-    form.password %}<input
-      type="password"
-      name="password"
-      class="form-control"
-      required
-    />{% endif %}
-  </div>
-  <button class="btn btn-success">Registrarme</button>
-</form>
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container container-int">
+  
+
+  <form method="post" id="registerForm" novalidate class="form-ticket">
+    <h1>Crear cuenta</h1>
+
+    {% csrf_token %}
+
+    <div class="row g-3 mt-3">
+      <!-- Nombres / apellidos -->
+      <div class="col-md-4">
+        <label class="form-label">Nombres *</label>
+        <input type="text" name="nombres"
+               class="form-control"
+               value="{{ form.nombres.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Apellido paterno *</label>
+        <input type="text" name="apellido1"
+               class="form-control"
+               value="{{ form.apellido1.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Apellido materno *</label>
+        <input type="text" name="apellido2"
+               class="form-control"
+               value="{{ form.apellido2.value|default_if_none:'' }}">
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <!-- Email -->
+      <div class="col-md-6">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" id="email"
+               class="form-control"
+               value="{{ form.email.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Email inválido.</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Confirmar Email *</label>
+        <input type="email" name="email2" id="email2"
+               class="form-control"
+               value="{{ form.email2.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Los emails no coinciden.</div>
+      </div>
+
+      <!-- Teléfono -->
+      <div class="col-md-4">
+        <label class="form-label">Teléfono móvil *</label>
+        <input type="text" name="telefono_movil" id="telefono"
+               class="form-control"
+               inputmode="numeric" pattern="\d{8,}"
+               value="{{ form.telefono_movil.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Solo números, al menos 8 dígitos.</div>
+      </div>
+
+      <!-- Documento -->
+      <div class="col-md-4">
+        <label class="form-label d-block">Tipo doc. *</label>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input"
+                 type="radio" name="tipo_doc" id="tipo_rut" value="RUT"
+                 {% if form.tipo_doc.value == "RUT" or not form.tipo_doc.value %}checked{% endif %}>
+          <label class="form-check-label" for="tipo_rut">RUT</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input"
+                 type="radio" name="tipo_doc" id="tipo_pasaporte" value="Pasaporte"
+                 {% if form.tipo_doc.value == "Pasaporte" %}checked{% endif %}>
+          <label class="form-check-label" for="tipo_pasaporte">Pasaporte</label>
+        </div>
+        <div id="tipo_doc_error" class="invalid-feedback">Selecciona un tipo de documento.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Número documento *</label>
+        <input type="text" name="numero_documento" id="numero_documento"
+               class="form-control"
+               value="{{ form.numero_documento.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <!-- País / Ciudad / Comuna -->
+      <div class="col-md-4">
+        <label class="form-label">País *</label>
+        <select name="pais" id="pais" class="form-select" required>
+          <option value="">— Selecciona —</option>
+          <option value="CL" {% if form.pais.value == "CL" %}selected{% endif %}>Chile</option>
+          <option value="AR" {% if form.pais.value == "AR" %}selected{% endif %}>Argentina</option>
+          <option value="PE" {% if form.pais.value == "PE" %}selected{% endif %}>Perú</option>
+          <option value="BR" {% if form.pais.value == "BR" %}selected{% endif %}>Brasil</option>
+          <option value="US" {% if form.pais.value == "US" %}selected{% endif %}>Estados Unidos</option>
+          <option value="OTRO" {% if form.pais.value == "OTRO" %}selected{% endif %}>Otro</option>
+        </select>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Ciudad *</label>
+        <select name="ciudad" id="ciudad" class="form-select" required>
+          <option value="">— Selecciona —</option>
+        </select>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Comuna *</label>
+        <select name="comuna" id="comuna" class="form-select" required>
+          <option value="">— Selecciona —</option>
+        </select>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <!-- Empresa -->
+      <div class="col-md-6">
+        <label class="form-label">Empresa / Institución *</label>
+        <input type="text" name="empresa" id="empresa"
+               class="form-control"
+               value="{{ form.empresa.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Cargo *</label>
+        <input type="text" name="cargo" id="cargo"
+               class="form-control"
+               value="{{ form.cargo.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Rubro *</label>
+        <input type="text" name="rubro" id="rubro"
+               class="form-control"
+               value="{{ form.rubro.value|default_if_none:'' }}" required>
+        <div class="invalid-feedback">Campo obligatorio.</div>
+      </div>
+
+      <!-- Password -->
+      <div class="col-md-6">
+        <label class="form-label">Contraseña *</label>
+        <input type="password" name="password" id="password"
+               class="form-control" required minlength="6">
+        <div class="invalid-feedback">Mínimo 6 caracteres.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Confirmar contraseña *</label>
+        <input type="password" name="password2" id="password2"
+               class="form-control" required minlength="6">
+        <div class="invalid-feedback">Las contraseñas no coinciden.</div>
+      </div>
+
+      <!-- Checks -->
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox"
+                 name="acepta_terminos" id="acepta_terminos"
+                 {% if form.acepta_terminos.value %}checked{% endif %} required>
+          <label class="form-check-label" for="acepta_terminos">
+            Acepto los <a href="/terminos/" target="_blank">Términos y Condiciones</a> y autorizo el tratamiento de mis datos personales según la <a href="/privacidad/" target="_blank">Política de Privacidad</a>.
+          </label>
+          <div class="invalid-feedback">Debes aceptar los términos para continuar.</div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox"
+                 name="recibe_novedades" id="recibe_novedades"
+                 {% if form.recibe_novedades.value %}checked{% endif %}>
+          <label class="form-check-label" for="recibe_novedades">
+            Deseo recibir noticias y beneficios de [NOMBRE-SITIO] y sus eventos asociados.
+          </label>
+        </div>
+      </div>
+
+      <!-- Errores de Django -->
+      {% if form.errors %}
+      <div class="col-12">
+        <div class="alert alert-danger">
+          Corrige los errores del formulario.
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {% for error in field.errors %}
+              <div>{{ field.label }}: {{ error }}</div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="col-12 mt-3">
+        <button type="submit" class="btn btn-primary btn-site">Crear cuenta</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+(() => {
+  const form = document.getElementById('registerForm');
+  const email1 = document.getElementById('email');
+  const email2 = document.getElementById('email2');
+  const pwd1 = document.getElementById('password');
+  const pwd2 = document.getElementById('password2');
+  const paisSelect = document.getElementById('pais');
+  const ciudadSelect = document.getElementById('ciudad');
+  const comunaSelect = document.getElementById('comuna');
+  const tipoRadios = document.querySelectorAll('input[name="tipo_doc"]');
+  const tipoDocError = document.getElementById('tipo_doc_error');
+
+  const LOCATION_DATA = {
+    CL: {
+      "Santiago": ["Santiago Centro", "Providencia", "Las Condes", "Ñuñoa", "Maipú"],
+      "Puerto Montt": ["Puerto Montt"],
+      "Valdivia": ["Valdivia"],
+    },
+    AR: {
+      "Buenos Aires": ["CABA", "La Plata"],
+      "Córdoba": ["Córdoba"],
+    },
+    PE: {
+      "Lima": ["Lima"],
+    },
+    BR: {
+      "São Paulo": ["São Paulo"],
+    },
+    US: {
+      "Miami": ["Miami"],
+      "New York": ["Manhattan", "Brooklyn"],
+    },
+    OTRO: {
+      "Otra ciudad": ["Otra comuna"],
+    },
+  };
+
+  function resetSelect(select, placeholder) {
+    select.innerHTML = "";
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = placeholder;
+    select.appendChild(opt);
+  }
+
+  function loadCiudades(pais, selectedCiudad) {
+    resetSelect(ciudadSelect, "— Selecciona —");
+    resetSelect(comunaSelect, "— Selecciona —");
+    if (!pais || !LOCATION_DATA[pais]) return;
+
+    Object.keys(LOCATION_DATA[pais]).forEach(ciudad => {
+      const opt = document.createElement("option");
+      opt.value = ciudad;
+      opt.textContent = ciudad;
+      if (ciudad === selectedCiudad) opt.selected = true;
+      ciudadSelect.appendChild(opt);
+    });
+  }
+
+  function loadComunas(pais, ciudad, selectedComuna) {
+    resetSelect(comunaSelect, "— Selecciona —");
+    if (!pais || !ciudad || !LOCATION_DATA[pais]) return;
+
+    const comunas = LOCATION_DATA[pais][ciudad] || [];
+    comunas.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      if (c === selectedComuna) opt.selected = true;
+      comunaSelect.appendChild(opt);
+    });
+  }
+
+  // Pre-cargar si viene de POST con errores
+  const initialPais = "{{ form.pais.value|default_if_none:'' }}";
+  const initialCiudad = "{{ form.ciudad.value|default_if_none:'' }}";
+  const initialComuna = "{{ form.comuna.value|default_if_none:'' }}";
+
+  if (initialPais) {
+    loadCiudades(initialPais, initialCiudad);
+    if (initialCiudad) {
+      loadComunas(initialPais, initialCiudad, initialComuna);
+    }
+  }
+
+  paisSelect.addEventListener("change", () => {
+    loadCiudades(paisSelect.value, "");
+  });
+
+  ciudadSelect.addEventListener("change", () => {
+    loadComunas(paisSelect.value, ciudadSelect.value, "");
+  });
+
+  const markTouched = el => el.classList.add("touched");
+  form.querySelectorAll("input,select").forEach(el => {
+    el.addEventListener("blur", () => markTouched(el));
+  });
+
+  email2.addEventListener("input", () => {
+    if (email1.value && email2.value && email1.value !== email2.value) {
+      email2.setCustomValidity("Los emails no coinciden");
+    } else {
+      email2.setCustomValidity("");
+    }
+  });
+
+  pwd2.addEventListener("input", () => {
+    if (pwd1.value && pwd2.value && pwd1.value !== pwd2.value) {
+      pwd2.setCustomValidity("Las contraseñas no coinciden");
+    } else {
+      pwd2.setCustomValidity("");
+    }
+  });
+
+  tipoRadios.forEach(r => {
+    r.addEventListener("change", () => {
+      tipoDocError.style.display = "none";
+    });
+  });
+
+  form.addEventListener("submit", (e) => {
+    const tipoElegido = Array.from(tipoRadios).some(r => r.checked);
+    if (!tipoElegido) {
+      tipoDocError.style.display = "block";
+    } else {
+      tipoDocError.style.display = "none";
+    }
+
+    form.classList.add("was-validated");
+
+    if (!form.checkValidity() || !tipoElegido) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+})();
+</script>
+
+<style>
+.invalid-feedback { display:none; }
+input.touched:invalid ~ .invalid-feedback,
+select.touched:invalid ~ .invalid-feedback,
+.was-validated input:invalid ~ .invalid-feedback,
+.was-validated select:invalid ~ .invalid-feedback {
+  display:block;
+}
+input.touched:invalid,
+select.touched:invalid {
+  border-color:#dc3545;
+}
+</style>
 {% endblock %}

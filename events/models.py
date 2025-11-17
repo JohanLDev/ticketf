@@ -13,7 +13,8 @@ class Evento(models.Model):
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_termino = models.DateField(null=True, blank=True)
     ubicacion = models.CharField(max_length=200, blank=True)
-    banner_url = models.URLField(blank=True)
+    banner = models.ImageField(upload_to="event_banners/", blank=True, null=True)
+    descripcion = models.TextField(blank=True)  
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

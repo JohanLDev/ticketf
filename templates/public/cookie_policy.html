@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Política de cookies — Ticket-F{% endblock %}
+
+{% block content %}
+<div class="container container-int container-int-policy">
+<h1>Política de cookies</h1>
+<p class="text-muted">
+  Esta política explica qué son las cookies, qué tipos usamos en Ticket-F y 
+  cómo puedes gestionarlas desde tu navegador.
+</p>
+
+<h2>1. ¿Qué son las cookies?</h2>
+<p>
+  Las cookies son pequeños archivos de texto que se guardan en tu navegador 
+  cuando visitas un sitio web. Sirven para recordar tus preferencias, mantener
+  tu sesión iniciada o medir el uso del sitio. :contentReference[oaicite:4]{index=4}
+</p>
+
+<h2>2. Tipos de cookies que usamos</h2>
+<ul>
+  <li>
+    <strong>Cookies estrictamente necesarias:</strong>
+    permiten que el sitio funcione (por ejemplo, mantener tu sesión de administrador
+    o el carrito de compra de tickets). Sin ellas, la plataforma no podría operar correctamente.
+  </li>
+  <li>
+    <strong>Cookies de preferencia:</strong>
+    recuerdan ajustes como idioma, país o configuración de cuenta.
+  </li>
+  <li>
+    <strong>Cookies de análisis:</strong>
+    nos ayudan a entender cómo se usa Ticket-F (páginas vistas, errores, tiempos de carga)
+    para mejorar la experiencia.
+  </li>
+  <li>
+    <strong>Cookies de marketing:</strong>
+    solo se utilizarán si en el futuro activamos campañas de publicidad o remarketing
+    y siempre respetando tu consentimiento cuando sea requerido.
+  </li>
+</ul>
+
+<h2>3. Cookies propias y de terceros</h2>
+<p>
+  Podemos utilizar cookies propias (generadas directamente por Ticket-F)
+  y cookies de terceros, por ejemplo servicios de analítica o proveedores de pago,
+  siempre bajo contratos que resguarden la confidencialidad de tu información.
+</p>
+
+<h2>4. Cómo gestionar o desactivar cookies</h2>
+<p>
+  Puedes configurar tu navegador para bloquear o eliminar cookies en cualquier momento.
+  Ten en cuenta que algunas funciones de Ticket-F podrían dejar de funcionar si 
+  desactivas las cookies estrictamente necesarias.
+</p>
+<p>
+  Para más información, visita las páginas de ayuda de tu navegador (Chrome, Firefox, Safari, Edge, etc.).
+</p>
+
+<h2>5. Cambios en esta política</h2>
+<p>
+  Podemos actualizar esta política para reflejar cambios en el uso de cookies
+  o exigencias legales. La versión vigente siempre estará disponible en este sitio.
+</p>
+
+<p class="text-muted mt-4">
+  Última actualización: {{ today|default:"2025" }}
+</p>
+</div>
+{% endblock %}

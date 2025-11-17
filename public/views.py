@@ -2,16 +2,22 @@ from django.shortcuts import render
 from events.models import Evento
 
 def home(request):
-    qs = Evento.objects.all()
-    # si tienes un campo "estado" y quieres ocultar borradores/ocultos:
-    try:
-        qs = qs.exclude(estado__in=["borrador", "oculto", "draft", "hidden"])
-    except Exception:
-        pass
-    # ordena por fecha si existe; si no, por id
-    try:
-        eventos = qs.order_by("-fecha_inicio")[:20]
-    except Exception:
-        eventos = qs.order_by("-id")[:20]
-
+    # Solo eventos publicados
+    eventos = (
+        Evento.objects
+        .filter(estado="activo")
+        .order_by("fecha_inicio")
+    )
     return render(request, "public/home.html", {"eventos": eventos})
+
+def privacy_policy(request):
+    return render(request, "public/privacy_policy.html")
+
+def cookie_policy(request):
+    return render(request, "public/cookie_policy.html")
+
+def terms_of_use(request):
+    return render(request, "public/terms_of_use.html")
+
+def data_protection_law(request):
+    return render(request, "public/data_protection_law.html")

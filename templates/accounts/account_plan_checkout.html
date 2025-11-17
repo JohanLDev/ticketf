@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Pago plan Premium{% endblock %}
+
+{% block content %}
+
+<div class="container container-int">
+
+
+<div class="row justify-content-center">
+  
+  <div class="col-md-6">
+    <h1 class="mb-4">Pago plan Premium — {{ cuenta.nombre }}</h1>
+    <div class="border rounded-3 p-4">
+      <div class="text-center mb-3">
+        <!-- Logo de Transbank de mentira / placeholder -->
+        <div class="mb-2">
+          <strong>Transbank (simulado)</strong>
+        </div>
+        <p class="text-muted mb-0">Esta pantalla es solo de prueba, sin pago real.</p>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Número de tarjeta</label>
+          <input type="text" class="form-control" placeholder="1111 2222 3333 4444" />
+        </div>
+        <div class="row">
+          <div class="col-6 mb-3">
+            <label class="form-label">Fecha expiración</label>
+            <input type="text" class="form-control" placeholder="MM/AA" />
+          </div>
+          <div class="col-6 mb-3">
+            <label class="form-label">CVV</label>
+            <input type="text" class="form-control" placeholder="123" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 btn-site">
+          Pagar y activar Premium
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

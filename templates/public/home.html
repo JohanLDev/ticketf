@@ -1,14 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Inicio · Ticket-F{% endblock %}
-{% block content %}
-<h1>Home</h1>
-{% if user.is_authenticated %}
-  <a class="btn btn-primary" href="{% url 'accounts:admin_dashboard' %}">Ir al panel</a>
-{% endif %}
+{% load static %}
 
-<p>Luego listaremos eventos publicados…</p>
+{% block title %}Inicio · Ticket-F{% endblock %}
+
+{% block content %}
+<section class="wrap">
+  <section class="main-slider">
+
+    <h1><span>Somos expertos</span>
+      en eventos B2B</h1>
+    <p>Optimiza la compra, validación y administración de tickets en reuniones, 
+      seminarios, ferias y encuentros de negocios.</p>
+
+    <a href="#events">Ver eventos</a>
+
+    <div class="trame"></div>
+
+    <video class="video-bg" autoplay muted loop playsinline>
+      <source src="{% static 'core/video/fondo.mp4' %}" type="video/mp4">
+    </video>
+  </section>
+
+  <section class="home">
+    <!-- acá después metemos el contenido del hero -->
+  </section>
+</section>
 
 {% include "orders/_events_grid.html" %}
 
+<section class="wrap">
+  <section class="banner">
+    <h3>¿Eres organizador de eventos?</h3>
+    <p>Planifica y gestiona junto a la mejor plataforma</p>
+    <a href="#">Contactanos</a>
+  </section>
+</section>
 
 {% endblock %}

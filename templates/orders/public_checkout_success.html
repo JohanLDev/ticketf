@@ -1,37 +1,125 @@
-<!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>Orden #{{ orden.id }} — Éxito</title></head>
-  <body>
-    <h1>¡Compra creada!</h1>
-    <p><b>Orden:</b> #{{ orden.id }}</p>
-    <p><b>Evento:</b> {{ orden.evento.nombre }} ({{ orden.evento.slug }})</p>
-    <p><b>Comprador:</b> {{ orden.comprador_email }}</p>
+{% extends "base.html" %}
+{% load static %}
 
-    <h2>Tickets</h2>
-    <ul>
-      {% for t in tickets %}
-        <li>ID {{ t.id }} — {{ t.tipo.nombre }} — Código {{ t.code }}</li>
-      {% endfor %}
-    </ul>
+{% block title %}Compra realizada · Ticket-F{% endblock %}
 
-    <hr>
-    <p>
-        <a href="{% url 'orders:public-order-pdf' orden.id %}">
-            <button>Descargar PDF</button>
-        </a>
+{% block content %}
+
+<div class="checkout-success checkout-success-custom">
+
+  <!-- BLOQUE SUPERIOR: MENSAJE DE ÉXITO -->
+  <div class="text-center mb-5">
+    <div class="checkout-success-icon">
+      ✓
+    </div>
+    <h1 class="checkout-success-title">
+      ¡Tu compra fue realizada con éxito!
+    </h1>
+    <p class="checkout-success-subtitle">
+      Hemos enviado el detalle de tus tickets al correo <strong>{{ orden.comprador_email }}</strong>.
     </p>
+  </div>
 
-    <p>
-        <a href="{% url 'orders:public-event' orden.evento.slug %}">Volver al evento</a>
-        
-    </p>
+  <div class="row g-4">
 
-  <script>
+    <!-- COLUMNA IZQUIERDA: RESUMEN DE ORDEN Y TICKETS -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          Resumen de la orden
+        </div>
+        <div class="card-body">
+          <p class="mb-1"><strong>Orden:</strong> #{{ orden.id }}</p>
+          <p class="mb-1">
+            <strong>Evento:</strong> {{ orden.evento.nombre }} 
+            <span class="text-muted">({{ orden.evento.slug }})</span>
+          </p>
+          <p class="mb-0"><strong>Comprador:</strong> {{ orden.comprador_email }}</p>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          Tus tickets
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for t in tickets %}
+            <li class="list-group-item">
+              <div class="d-flex flex-column flex-md-row justify-content-between">
+                <div>
+                  <div class="fw-semibold">{{ t.tipo.nombre }}</div>
+                  <div class="small text-muted">ID {{ t.id }}</div>
+                </div>
+                <div class="mt-2 mt-md-0 text-md-end">
+                  <div class="small text-muted">Código de ticket</div>
+                  <code class="ticket-code">{{ t.code }}</code>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      {% if orden.shared_codes.all %}
+        <div class="card shadow-sm mb-4">
+          <div class="card-header">
+            Comparte tu código (N-1)
+          </div>
+          <div class="card-body">
+            {% for sc in orden.shared_codes.all %}
+              <div class="shared-code-box mb-3">
+                <div class="small text-muted">Código para compartir</div>
+                <div class="shared-code-value">
+                  {{ sc.code }}
+                </div>
+                <div class="small text-muted">
+                  Usos disponibles: {{ sc.remaining_uses }} / {{ sc.max_uses }}
+                </div>
+              </div>
+            {% endfor %}
+            <p class="small text-muted mb-0">
+              Este código entrega <strong>100% de descuento</strong> sólo en entradas
+              (no incluye estacionamiento), hasta agotar sus usos.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- COLUMNA DERECHA: ACCIONES PRINCIPALES -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-body d-flex flex-column justify-content-between">
+          <div class="mb-4">
+            <h5 class="card-title">¿Qué puedes hacer ahora?</h5>
+            <p class="card-text small text-muted">
+              Descarga tus tickets en PDF o vuelve al evento para revisar más información.
+            </p>
+          </div>
+
+          <div class="d-grid gap-2 mb-3">
+            <a href="{% url 'orders:public-order-pdf' orden.id %}" class="btn btn-primary btn-lg">
+              Descargar tickets en PDF
+            </a>
+            <a href="{% url 'orders:public-event' orden.evento.slug %}" class="btn btn-outline-secondary">
+              Volver a la página del evento
+            </a>
+          </div>
+
+          <p class="small text-muted mb-0">
+            Si no ves el correo en tu bandeja de entrada, revisa la carpeta de spam o promociones.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
   (() => {
-    // slug del evento desde el contexto correcto
     const slug = "{{ orden.evento.slug }}";
 
-    // limpia el estado del checkout
     const KEYS = [
       'checkout_cart',
       'checkout_totals',
@@ -41,10 +129,8 @@
     ];
     KEYS.forEach(k => sessionStorage.removeItem(k));
 
-    // marca que quedó limpio para este evento (lo usa Step 1)
     sessionStorage.setItem('checkout_cleared_for', slug);
   })();
-  </script>
+</script>
 
-  </body>
-</html>
+{% endblock %}

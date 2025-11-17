@@ -1,12 +1,22 @@
 {% extends "base.html" %}{% block title %}Eventos{% endblock %}
 {% block content %}
+
+<div class="container container-int">
 <h1>Eventos — {{ cuenta.nombre }}</h1>
-<a class="btn btn-primary mb-3" href="{% url 'events:create' %}">Crear evento</a>
+<a class="btn btn-primary mb-3 a-site" href="{% url 'events:create' %}">Crear evento</a>
 <table class="table">
 <tr><th>Nombre</th><th>Estado</th><th>Fechas</th><th></th></tr>
 {% for e in eventos %}
 <tr>
   <td>{{ e.nombre }}</td>
+  <td>
+    {{ e.nombre }}<br>
+    {% if e.descripcion %}
+      <small class="text-muted text-muted-custom">
+        {{ e.descripcion|truncatechars:40 }}
+      </small>
+    {% endif %}
+  </td>
   <td>{{ e.estado }}</td>
   <td>{{ e.fecha_inicio }}{% if e.fecha_termino %} — {{ e.fecha_termino }}{% endif %}</td>
   <td>
@@ -20,5 +30,7 @@
 <tr><td colspan="4">Sin eventos.</td></tr>
 {% endfor %}
 </table>
-<a class="btn btn-outline-secondary" href="{% url 'accounts:admin_dashboard' %}">Volver</a>
+<a class="btn btn-outline-secondary a-site" href="{% url 'accounts:admin_dashboard' %}">Volver</a>
+
+</div>
 {% endblock %}

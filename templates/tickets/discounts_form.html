@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container" style="max-width:720px;">
-  <h1>Crear descuento</h1>
-  <form method="post" class="mt-3">
+
+<div class="container container-int">
+
+  <form method="post" class="mt-3 form-general">
+    <h1>Crear descuento</h1>
     {% csrf_token %}
     <div class="mb-3">
       <label class="form-label">Nombre del Descuento</label>
@@ -45,8 +47,8 @@
     </div>
 
     <div class="mt-4 d-flex gap-2">
-      <button class="btn btn-primary" type="submit">Guardar</button>
-      <a class="btn btn-secondary" href="{% url 'tickets:discounts_list' %}">Cancelar</a>
+      <button class="btn btn-primary btn-site" type="submit">Guardar</button>
+      <a class="btn btn-secondary a-site" href="{% url 'tickets:discounts_list' %}">Cancelar</a>
     </div>
   </form>
 </div>

@@ -1,6 +1,8 @@
+import json
 from django.shortcuts import render, get_object_or_404
 from events.models import Evento
 from tickets.models import TipoTicket
+
 
 def _has_field(model, name: str) -> bool:
     return any(f.name == name for f in model._meta.get_fields())
@@ -48,10 +50,48 @@ def checkout_success(request, order_id: int):
     })
 
 def checkout_step3_form(request, slug):
-    from events.models import Evento
     event = get_object_or_404(Evento, slug=slug)
-    # El formulario se llenará en el front y validará en JS.
-    return render(request, "orders/public_checkout_step3.html", {"event": event})
+
+    buyer = None
+    if request.user.is_authenticated:
+        u = request.user
+        profile = getattr(u, "profile", None)
+
+        buyer = {
+            # Datos personales
+            "nombres": getattr(profile, "nombres", "") or getattr(u, "first_name", ""),
+            "apellido1": getattr(profile, "apellido1", "") or getattr(u, "last_name", ""),
+            "apellido2": getattr(profile, "apellido2", ""),
+
+            # Email
+            "email": u.email or "",
+            "email2": u.email or "",
+
+            # Teléfono
+            "telefono": getattr(profile, "telefono_movil", ""),
+
+            # Documento (si los tienes en el perfil)
+            "doc_tipo": (getattr(profile, "tipo_doc", "") or "RUT").lower(),  # "rut" o "passport"
+            "documento": getattr(profile, "numero_documento", ""),
+
+            # Ubicación
+            "pais": getattr(profile, "pais", "") or "CL",
+            "region": getattr(profile, "region", ""),
+            "ciudad": getattr(profile, "ciudad", ""),
+            "comuna": getattr(profile, "comuna", ""),
+
+            # Empresa / cargo / rubro (si existen en el perfil)
+            "empresa": getattr(profile, "empresa", ""),
+            "cargo": getattr(profile, "cargo", ""),
+            "rubro": getattr(profile, "rubro", ""),
+        }
+
+    context = {
+        "event": event,
+        # lo mandamos como JSON al template
+        "buyer_json": json.dumps(buyer) if buyer else "null",
+    }
+    return render(request, "orders/public_checkout_step3.html", context)
 
 def public_checkout_pay(request, slug):
     evento = get_object_or_404(Evento, slug=slug)

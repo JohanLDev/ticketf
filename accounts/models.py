@@ -83,3 +83,39 @@ class UsuarioRol(models.Model):
 
     def __str__(self):
         return f"{self.usuario.email} → {self.rol} ({self.cuenta.nombre})"
+    
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+
+    # Datos personales
+    nombres = models.CharField(max_length=150)
+    apellido1 = models.CharField("Apellido paterno", max_length=150)
+    apellido2 = models.CharField("Apellido materno", max_length=150, blank=True)
+
+    # Documento
+    tipo_doc = models.CharField(max_length=20, blank=True)  # "RUT" / "Pasaporte"
+    numero_documento = models.CharField(max_length=50, blank=True)
+
+    # Contacto
+    telefono_movil = models.CharField(max_length=30)
+    pais = models.CharField(max_length=2, default="CL")
+    region = models.CharField(max_length=100, blank=True)
+    ciudad = models.CharField(max_length=100, blank=True)
+    comuna = models.CharField(max_length=100, blank=True)
+
+    # Empresa
+    empresa = models.CharField(max_length=200, blank=True)
+    cargo = models.CharField(max_length=200, blank=True)
+    rubro = models.CharField(max_length=200, blank=True)
+
+    # Preferencias
+    acepta_terminos = models.BooleanField(default=False)
+    recibe_novedades = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.nombres} {self.apellido1} ({self.user.email})"
+

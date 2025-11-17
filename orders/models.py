@@ -6,6 +6,7 @@ from tickets.models import TipoTicket
 from django.conf import settings
 from django.utils import timezone
 
+
 ESTADO_TICKET = [("disponible","Disponible"), ("quemado","Quemado"), ("anulado", "Anulado")]
 
 class Orden(models.Model):
@@ -146,3 +147,32 @@ class PromoCode(models.Model):
         """Incrementa usos cuando una orden pagada lo aplica."""
         self.usos_actuales = models.F('usos_actuales') + 1
         self.save(update_fields=['usos_actuales'])
+
+def generate_shared_code():
+    return str(uuid.uuid4())
+
+class SharedPurchaseCode(models.Model):
+    """
+    Código compartible N-1 generado al final de una compra.
+    Entrega 100% de descuento sólo en entradas (excluye estacionamiento).
+    """
+    code = models.CharField(max_length=36, unique=True, default=generate_shared_code)
+
+    orden = models.ForeignKey('orders.Orden', on_delete=models.CASCADE, related_name='shared_codes')
+    evento = models.ForeignKey('events.Evento', on_delete=models.CASCADE)
+    max_uses = models.PositiveIntegerField(default=0)   # N-1
+    used_count = models.PositiveIntegerField(default=0)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)  # opcional
+
+    @property
+    def remaining_uses(self):
+        return max(0, self.max_uses - self.used_count)
+
+    def is_valid_now(self):
+        if not self.active:
+            return False
+        if self.expires_at and timezone.now() > self.expires_at:
+            return False
+        return self.remaining_uses > 0      

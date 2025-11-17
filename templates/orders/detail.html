@@ -1,6 +1,8 @@
 {% extends "base.html" %}{% block title %}Detalle orden{% endblock %}
 {% block content %}
 
+
+<div class="container container-int">
 <h1>Orden #{{ orden.id }} — {{ orden.evento.nombre }}</h1>
 <p><b>Comprador:</b> {{ orden.comprador_email }}</p>
 
@@ -34,7 +36,7 @@
 
         <!-- Descargar PDF -->
         <a href="{% url 'orders:ticket-pdf' t.code %}"
-           class="btn btn-sm btn-primary mt-2"
+           class="btn btn-sm btn-primary mt-2 a-site"
            target="_blank" rel="noopener">
           Descargar PDF
         </a>
@@ -45,7 +47,7 @@
           <div class="input-group input-group-sm" style="max-width: 360px;">
             <input type="email" name="email" class="form-control"
                    value="{{ orden.comprador_email }}" placeholder="correo destino">
-            <button type="submit" class="btn btn-outline-primary">
+            <button type="submit" class="btn btn-outline-primary btn-site">
               {% if t.tipo.is_parking %}Enviar estacionamiento{% else %}Enviar por correo{% endif %}
             </button>
           </div>
@@ -114,7 +116,29 @@
   </tbody>
 </table>
 
-<h2>Resumen de orden</h2>
+<br>
+<br>
+
+{% if orden.shared_codes.all %}
+  <h2 class="sub-title">Códigos compartidos (N-1)</h2>
+  <ul>
+    {% for sc in orden.shared_codes.all %}
+      <li>
+        <b>{{ sc.code }}</b> — {{ sc.evento.nombre }}<br>
+        Usos: {{ sc.used_count }}/{{ sc.max_uses }}
+        <span class="small text-muted">Creado el {{ sc.created_at|date:"d/m/Y H:i" }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-muted">Esta orden no tiene códigos compartidos.</p>
+{% endif %}
+
+<br>
+<br>
+
+
+<h2 class="sub-title">Resumen de orden</h2>
 <ul>
   <li>Total de tickets: {{ resumen.total }}</li>
   <li>Disponibles: {{ resumen.disponibles }}</li>
@@ -125,9 +149,11 @@
   {% csrf_token %}
   <div class="input-group" style="max-width:400px;">
     <input type="email" name="email" class="form-control" value="{{ orden.comprador_email }}">
-    <button type="submit" class="btn btn-outline-primary">Enviar todos los tickets</button>
+    <button type="submit" class="btn btn-outline-primary btn-site">Enviar todos los tickets</button>
   </div>
 </form>
 
-<a class="btn btn-outline-secondary" href="{% url 'orders:list' %}">Volver a órdenes</a>
+<a class="btn btn-outline-secondary a-site" href="{% url 'orders:list' %}">Volver a órdenes</a>
+
+</div>
 {% endblock %}

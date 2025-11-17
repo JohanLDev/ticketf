@@ -220,3 +220,15 @@ def ticket_pdf_by_code(request, code):
     resp = HttpResponse(pdf, content_type="application/pdf")
     resp["Content-Disposition"] = f'inline; filename="ticket_{ticket.id}.pdf"'
     return resp
+
+@login_required
+def ticket_pdf_by_user(request, code):
+    ticket = get_object_or_404(Ticket, code=code)
+
+    # Seguridad: el ticket debe pertenecer al usuario logeado
+    if ticket.asistente_email != request.user.email and \
+       ticket.orden.comprador_email != request.user.email:
+        raise Http404("No tienes acceso a este ticket.")
+
+    # Reutilizamos tu generador de PDF REAL
+    return ticket_pdf_by_code(request, code)

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Plan de la cuenta{% endblock %}
+
+{% block content %}
+<div class="container container-int">
+
+<h1 class="mb-4">Plan de la cuenta — {{ cuenta.nombre }}</h1>
+
+<div class="row g-4">
+  <!-- Plan Básico -->
+  <div class="col-md-6">
+    <div class="border rounded-3 p-4 h-100 {% if cuenta.plan == 'basico' %}border-primary{% endif %}">
+      <h2 class="h4">Plan Básico</h2>
+      <p class="text-muted mb-1">$0 / mes</p>
+      {% if cuenta.plan == "basico" %}
+        <span class="badge bg-primary mb-3">Tu plan actual</span>
+      {% endif %}
+
+      <ul class="mb-4">
+        <li>Creación y gestión de eventos</li>
+        <li>Emisión de tickets estándar</li>
+        <li>Validación de tickets en puerta</li>
+      </ul>
+
+      {% if cuenta.plan == "premium" %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="downgrade">
+          <button type="submit" class="btn btn-outline-danger w-100">
+            Volver a Básico
+          </button>
+        </form>
+      {% else %}
+        <button class="btn btn-outline-secondary w-100" disabled>
+          Plan activo
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Plan Premium -->
+  <div class="col-md-6">
+    <div class="border rounded-3 p-4 h-100 {% if cuenta.plan == 'premium' %}border-primary{% endif %}">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2 class="h4 mb-0">Plan Premium</h2>
+        <span class="badge bg-warning text-dark">Recomendado</span>
+      </div>
+      <p class="text-muted mb-1">$XX / mes</p>
+
+      {% if cuenta.plan == "premium" %}
+        <span class="badge bg-primary mb-3">Tu plan actual</span>
+      {% endif %}
+
+      <ul class="mb-4">
+        <li>Todo lo del plan Básico</li>
+        <li>Reportes Premium y paneles avanzados</li>
+        <li>Live Heatmap de asistencia</li>
+        <li>Soporte prioritario</li>
+      </ul>
+
+      {% if cuenta.plan == "basico" %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="upgrade">
+          <button type="submit" class="btn btn-primary w-100">
+            Mejorar a Premium
+          </button>
+        </form>
+      {% else %}
+        <button class="btn btn-outline-secondary w-100" disabled>
+          Plan activo
+        </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

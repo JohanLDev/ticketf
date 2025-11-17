@@ -1,6 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Asignar ADMIN{% endblock %}
+
 {% block content %}
-<h1>Asignar ADMIN a {{ cuenta.nombre }}</h1>
-<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Asignar</button></form>
+
+<div class="container container-int">
+
+<form method="post" class="form-general">
+    <h1>Asignar ADMIN a {{ cuenta.nombre }}</h1>
+
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        {{ form.nombre }}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        {{ form.email }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.password.label_tag }}
+        {{ form.password }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.confirm_password.label_tag }}
+        {{ form.confirm_password }}
+    </div>
+
+    <button type="submit" class="btn btn-primary">Asignar</button>
+</form>
+
+</div>
 {% endblock %}

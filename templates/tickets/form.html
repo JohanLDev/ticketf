@@ -1,5 +1,13 @@
 {% extends "base.html" %}{% block title %}{{ title }}{% endblock %}
 {% block content %}
-<h1>{{ title }} — {{ evento.nombre }}</h1>
-<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-success">Guardar</button></form>
+
+<div class="container container-int">
+
+<form method="post" class="form-general form-general-custom">
+    <h1>{{ title }} — {{ evento.nombre }}</h1>
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-success">Guardar</button>
+</form>
+</div>
 {% endblock %}

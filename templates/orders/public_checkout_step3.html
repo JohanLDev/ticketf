@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container" style="max-width:900px;">
-  <h1>Finaliza tu reserva — {{ event.nombre }}</h1>
+<div class="container container-int">
+  
 
-  <form id="checkoutForm" class="needs-validation" novalidate>
+  <form id="checkoutForm" class="needs-validation form-ticket" novalidate>
+    <h1>Finaliza tu reserva — {{ event.nombre }}</h1>
     {% csrf_token %}
     <div class="row g-3 mt-3">
       <!-- Datos personales -->
@@ -144,8 +145,8 @@
     <div class="d-flex justify-content-between align-items-center mt-4 border-top pt-3">
       <p><strong>SUBTOTAL:</strong> <span id="subtotalStep3">$0</span></p>
       <div>
-        <a href="{% url 'orders:public-checkout-step1' event.slug %}" class="btn btn-secondary">Atrás</a>
-        <button id="btn-pagar" class="btn btn-primary" type="submit">PAGAR (simulado)</button>
+        <a href="{% url 'orders:public-checkout-step1' event.slug %}" class="btn btn-secondary a-site">Atrás</a>
+        <button id="btn-pagar" class="btn btn-primary btn-site" type="submit">PAGAR</button>
       </div>
     </div>
   </form>
@@ -177,6 +178,39 @@ input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
   const form = $('checkoutForm');
   const pagar = $('btn-pagar');
   const money = n => (n||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0});
+  const BUYER_FROM_SERVER = {{ buyer_json|default:"null"|safe }};
+
+    // === Autorellenar con datos de la cuenta (si el usuario está logueado) ===
+  fetch("/accounts/api/profile/", {
+    credentials: "include"
+  })
+  .then(r => r.ok ? r.json() : null)
+  .then(data => {
+    if (!data) return;
+
+    if (data.nombres) $('nombres').value = data.nombres;
+    if (data.apellido1) $('apellido1').value = data.apellido1;
+    if (data.apellido2) $('apellido2').value = data.apellido2 || '';
+
+    if (data.email) {
+      $('email').value = data.email;
+      $('email2').value = data.email;
+    }
+
+    if (data.telefono_movil) $('telefono').value = data.telefono_movil;
+    if (data.pais) $('pais').value = data.pais;
+
+    if (data.region) {
+      const regionInput = document.getElementById('region');
+      if (regionInput) regionInput.value = data.region;
+    }
+    if (data.ciudad) {
+      const ciudadInput = document.getElementById('ciudad');
+      if (ciudadInput) ciudadInput.value = data.ciudad;
+    }
+  })
+  .catch(() => {});
+
 
   /* === Subtotal del paso anterior === */
   const totals = JSON.parse(sessionStorage.getItem('checkout_totals') || 'null');
@@ -247,32 +281,94 @@ input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
   selCiudad.addEventListener('change', () => { fillComunas(selCiudad.value); saveBuyer(); });
   selComuna.addEventListener('change', saveBuyer);
 
-  /* === Persistencia === */
-  const KEY='checkout_buyer';
-  const fields=['nombres','apellido1','apellido2','email','email2','telefono',
-                'documento','pais','region','ciudad','comuna','empresa','cargo','rubro','patente'];
-  function saveBuyer(){
-    const data={};
-    fields.forEach(id=>{ const el=$(id); if(el) data[id]=el.value; });
-    data.doc_tipo=$('doc_tipo_rut').checked?'rut':'passport';
-    data.acepta_terms=$('acepta_terms').checked; data.acepta_news=$('acepta_news').checked;
-    sessionStorage.setItem(KEY,JSON.stringify(data));
+    /* === Persistencia + Prefill desde el perfil logeado === */
+  const KEY = 'checkout_buyer';
+  const fields = [
+    'nombres','apellido1','apellido2','email','email2','telefono',
+    'documento','pais','region','ciudad','comuna',
+    'empresa','cargo','rubro','patente'
+  ];
+
+  function saveBuyer() {
+    const data = {};
+    fields.forEach(id => {
+      const el = $(id);
+      if (el) data[id] = el.value;
+    });
+    // lo guardamos en el mismo formato que ya usabas
+    data.doc_tipo = $('doc_tipo_passport').checked ? 'passport' : 'rut';
+    data.acepta_terms = $('acepta_terms').checked;
+    data.acepta_news  = $('acepta_news').checked;
+    sessionStorage.setItem(KEY, JSON.stringify(data));
   }
-  function loadBuyer(){
-    try{
-      const d=JSON.parse(sessionStorage.getItem(KEY)||'null'); if(!d)return;
-      fields.forEach(id=>{ if($(id)) $(id).value=d[id]||''; });
-      if(d.doc_tipo==='passport')$('doc_tipo_passport').checked=true;
-      $('acepta_terms').checked=!!d.acepta_terms; $('acepta_news').checked=!!d.acepta_news;
-      if(d.pais==='CL'){ wrapReg.style.display=''; fillRegiones(); selRegion.value=d.region; fillCiudades(d.region); selCiudad.value=d.ciudad; fillComunas(d.ciudad); selComuna.value=d.comuna; }
-    }catch{}
+
+  function applyBuyerData(d) {
+    if (!d) return;
+
+    // rellenar inputs
+    fields.forEach(id => {
+      const el = $(id);
+      if (el) el.value = d[id] || '';
+    });
+
+    // tipo documento
+    const tipo = (d.doc_tipo || '').toLowerCase();
+    if (tipo === 'passport' || tipo === 'pasaporte') {
+      $('doc_tipo_passport').checked = true;
+      $('doc_tipo_rut').checked = false;
+    } else {
+      $('doc_tipo_rut').checked = true;
+      $('doc_tipo_passport').checked = false;
+    }
+
+    // checks
+    $('acepta_terms').checked = !!d.acepta_terms;
+    $('acepta_news').checked  = !!d.acepta_news;
+
+    // región / ciudad / comuna de Chile
+    if (d.pais === 'CL') {
+      wrapReg.style.display = '';
+      fillRegiones();
+      if (d.region) {
+        selRegion.value = d.region;
+        fillCiudades(d.region);
+      }
+      if (d.ciudad) {
+        selCiudad.value = d.ciudad;
+        fillComunas(d.ciudad);
+      }
+      if (d.comuna) {
+        selComuna.value = d.comuna;
+      }
+    }
   }
-  document.querySelectorAll('#checkoutForm input, #checkoutForm select').forEach(el=>{
+
+  function loadBuyer() {
+    try {
+      // 1º: lo que esté en sessionStorage (vuelve si el usuario ya rellenó)
+      let d = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+
+      // 2º: si no hay nada, usamos los datos del perfil logeado
+      if (!d && BUYER_FROM_SERVER) {
+        d = BUYER_FROM_SERVER;
+      }
+
+      applyBuyerData(d);
+    } catch (e) {
+      console.error('Error cargando buyer:', e);
+    }
+  }
+
+  // Guardar en sessionStorage cada vez que el usuario escribe algo
+  document.querySelectorAll('#checkoutForm input, #checkoutForm select').forEach(el => {
     el.addEventListener('input', () => { saveBuyer(); validateSoft(); });
     el.addEventListener('change', () => { saveBuyer(); validateSoft(); });
     el.addEventListener('blur',  () => { el.classList.add('touched'); validateSoft(); });
   });
+
+  // Prefill inicial
   loadBuyer();
+
 
   /* === Validaciones suaves === */
   function validateSoft(){

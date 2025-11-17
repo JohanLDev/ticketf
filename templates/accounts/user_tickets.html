@@ -1,0 +1,12 @@
+{% if tickets %}
+  <div class="list-group">
+    {% for t in tickets %}
+      <a href="{% url 'accounts:user_ticket_detail' t.id %}" class="list-group-item list-group-item-action">
+        <strong>{{ t.codigo }}</strong> — {{ t.tipo.nombre }}
+        <span class="text-muted">({{ t.estado }})</span>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-muted">No tienes tickets registrados.</p>
+{% endif %}

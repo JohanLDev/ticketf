@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container" style="max-width:1000px;">
+<div class="container container-int">
   <h1>Comprar tickets — {{ event.nombre }}</h1>
 
   <div class="row" style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
@@ -95,7 +95,7 @@
         <hr>
         <button id="continue-btn" class="btn btn-primary w-100" disabled>Continuar</button>
         <a href="{% url 'orders:public-event' event.slug %}" class="btn btn-secondary w-100 mt-2">Volver</a>
-        <div class="form-text mt-2">Próximo paso: formulario del comprador (no hay pasarela, pago simulado).</div>
+        <div class="form-text mt-2">Próximo paso: formulario del comprador.</div>
       </div>
     </div>
   </div>

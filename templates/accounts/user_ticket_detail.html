@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container container-int">
+<h1>Detalle de mi ticket</h1>
+
+<p><strong>Código:</strong> {{ ticket.code }}</p>
+<p><strong>Evento:</strong> {{ ticket.orden.evento.nombre }}</p>
+<p><strong>Tipo:</strong> {{ ticket.tipo.nombre }}</p>
+<p><strong>Estado:</strong> {{ ticket.estado }}</p>
+
+<p><strong>Usado:</strong>
+  {% if ticket.fecha_uso %}
+    {{ ticket.fecha_uso }}
+  {% else %}
+    No usado
+  {% endif %}
+</p>
+
+<hr>
+<p><strong>QR</strong></p>
+<img src="{% url 'orders:ticket_qr' ticket.code %}"
+     alt="QR {{ ticket.code }}"
+     style="width:200px; border:1px solid #ccc; padding:5px;">
+
+<hr>
+
+<a href="{% url 'accounts:profile' %}?tab=tickets" class="btn btn-secondary a-site">
+  ← Volver a mis tickets
+</a>
+
+</div>
+{% endblock %}

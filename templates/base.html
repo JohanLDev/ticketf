@@ -8,45 +8,80 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     />
+
+    {% load static %}
+
+    <link rel="stylesheet" href="{% static 'core/css/style.css' %}">
   </head>
-  <body>
-    <nav class="navbar bg-light px-3">
-      <a class="navbar-brand" href="{% url 'public:home' %}">Ticket-F</a>
-      
-      <div class="ms-auto">
+
+  {# >>> CAMBIO IMPORTANTE AQUÍ <<< #}
+  <body class="d-flex flex-column min-vh-100">
+    <div class="top">
+      <p>La forma más fácil y profesional de gestionar tus eventos empresariales.</p>
+    </div>
+
+    <nav class="navbar bg-light px-3 navbar-main">
+      <a class="navbar-brand" href="{% url 'public:home' %}">
+        <img src="{% static 'core/img/logo-ticketef.png' %}" alt="Ticket-F" class="logo">
+      </a>
+
+      <div class="ms-auto d-flex align-items-center gap-4 ">
         {% if user.is_authenticated %}
-        <nav class="d-flex gap-3 align-items-center">
+
+          {# ---------- SUPERADMIN ---------- #}
           {% if user.is_superuser %}
             <a href="{% url 'accounts:select_account' %}">Cambiar de cuenta</a>
-          {% endif %}
-
-          {% if user.is_superuser %}
             <a href="{% url 'accounts:super_cuentas' %}">Super · Cuentas</a>
-          {% endif %}
-          
-          <a href="{% url 'accounts:admin_dashboard' %}">Panel</a>
-          <a href="{% url 'orders:list' %}">Órdenes</a>
-          <a href="{% url 'orders:validator' %}">Validador</a>
-          <span class="text-muted">Cuenta activa</span>
-          <form action="{% url 'logout' %}" method="post" style="display:inline;">
+            <a href="{% url 'accounts:admin_dashboard' %}">Panel</a>
+            <a href="{% url 'orders:list' %}">Órdenes</a>
+            <a href="{% url 'orders:validator' %}">Validador</a>
 
+            <span class="text-muted">
+              Cuenta activa
+            </span>
+            
+            <span class="superadmin-badge ms-1">
+              Superadmin 👑
+            </span>
+
+          {# ---------- ADMIN (staff, pero NO superuser) ---------- #}
+          {% elif user.is_staff %}
+            {% with rol_obj=user.usuariorol_set.all.0 %}
+              <a href="{% url 'accounts:admin_dashboard' %}">Panel</a>
+              <a href="{% url 'orders:list' %}">Órdenes</a>
+              <a href="{% url 'orders:validator' %}">Validador</a>
+
+              <span class="badge bg-secondary ms-1">
+                Admin
+                {% if cuenta_activa and cuenta_activa.plan == "premium" %}
+                  ⭐
+                {% endif %}
+              </span>
+            {% endwith %}
+          {% endif %}
+
+          <a href="{% url 'accounts:profile' %}">Ir a mi perfil</a>
+
+          <form action="{% url 'accounts:logout' %}" method="post" class="d-inline">
             {% csrf_token %}
-            <button type="submit" class="btn btn-link" style="padding:0; border:0; background:none;">
+            <button type="submit" class="btn btn-link p-0 m-0 align-baseline">
               Logout
             </button>
           </form>
 
-        </nav>
-      {% else %}
-        <nav class="d-flex gap-3 align-items-center">
-          <a class="btn btn-primary btn-sm" href="{% url 'accounts:login' %}">Login</a>
-        </nav>
-      {% endif %}
-
+        {% else %}
+          <a class="btn btn-outline-primary login" href="{% url 'accounts:login' %}">
+            INICIAR SESIÓN / REGÍSTRATE
+          </a>
+        {% endif %}
       </div>
     </nav>
-    <main class="container py-4">{% block content %}
-      {% if messages %}
+
+    {# >>> CONTENIDO QUE EMPUJA EL FOOTER <<< #}
+    <main class="flex-fill">
+      <div class="container py-4">
+
+        {% if messages %}
           <div class="mb-3">
             {% for message in messages %}
               <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
@@ -55,8 +90,66 @@
             {% endfor %}
           </div>
         {% endif %}
-      {% endblock %}
-    
+
+        {% block content %}{% endblock %}
+
+      </div>
     </main>
+
+    {# >>> FOOTER SIEMPRE ABAJO <<< #}
+    <footer class="main-footer">
+      <section class="footer-row">
+
+        <div class="block-footer">
+          <img src="{% static 'core/img/logo-footer.png' %}" alt="Ticket-F" class="logo-footer">
+
+          <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas tempore nihil quia eveniet! Sapiente, ad. Ratione commodi autem similique facere nostrum id est corrupti facilis, debitis, quas exercitationem, quae labore.</p>
+        </div>
+
+        <div class="block-footer">
+          <nav>
+            <ul>
+              <li>
+                {% if user.is_authenticated and user.is_staff and not user.is_superuser and cuenta_activa and not hide_plan_cta %}
+                  <a href="{% url 'accounts:account_plan' %}" class="btn btn-sm btn-outline-primary mb-3">
+                    {% if cuenta_activa.plan == "premium" %}
+                      Gestionar mi plan
+                    {% else %}
+                      Mejora tu plan a Premium
+                    {% endif %}
+                  </a>
+                {% endif %}
+              </li>
+
+              <li><a href="#">Acerca de</a></li>
+            </ul>
+          </nav>
+          
+          <nav class="social">
+            <ul>
+              <li><a href="#"><img src="{% static 'core/img/social/instagram.png' %}" alt=""></a></li>
+              <li><a href="#"><img src="{% static 'core/img/social/facebook.png' %}" alt=""></a></li>
+              <li><a href="#"><img src="{% static 'core/img/social/x.png' %}" alt=""></a></li>
+              <li><a href="#"><img src="{% static 'core/img/social/linkedin.png' %}" alt=""></a></li>
+              <li><a href="#"><img src="{% static 'core/img/social/tiktok.png' %}" alt=""></a></li>
+            </ul>
+            <span>Conectémonos</span>
+          </nav>
+        </div>
+        
+      </section>
+
+      <section class="footer-row">
+        <nav>
+          <ul>
+            <li><a href="{% url 'public:privacy_policy' %}">Política de privacidad</a></li>
+            <li><a href="{% url 'public:cookie_policy' %}">Política de cookies</a></li>
+            <li><a href="{% url 'public:terms_of_use' %}">Términos de uso</a></li>
+            <li><a href="{% url 'public:data_protection_law' %}">Ley de protección de datos</a></li>
+          </ul>
+        </nav>
+      </section>
+    </footer>
+
   </body>
 </html>

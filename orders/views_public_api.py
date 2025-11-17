@@ -1,129 +1,448 @@
-# orders/views_public_api.py
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework import status
-
+import json
 from django.shortcuts import get_object_or_404
-from events.models import Evento
-from tickets.models import TipoTicket
-from .services.checkout import crear_orden_y_tickets
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
+from events.models import Evento
+from .models import Orden
+from django.http import JsonResponse, HttpResponseBadRequest
+from orders.models import SharedPurchaseCode
+from decimal import Decimal
+from django.db import transaction
+from django.utils import timezone
+from django.urls import reverse
+from tickets.models import TipoTicket, DiscountCode
+from orders.services.checkout import (
+    finalizar_pago_y_generar_codigo,
+    aplicar_shared_code_en_carrito,
+    confirmar_compra_con_shared_code,
+)
 
-from tickets.models import DiscountCode, TipoTicket
 
-@csrf_exempt
-@api_view(["POST"])
-@permission_classes([AllowAny])
+def _clean_email(v: str) -> str:
+    return (v or "").strip().lower()
+
+
+@csrf_exempt  # puedes quitar el csrf_exempt si prefieres protegerlo con CSRF + header
 def checkout_crear_orden(request):
     """
-    Crea una Orden y Tickets para un evento público (simulado, sin pasarela).
-    Payload esperado:
-    {
-      "evento_slug": "mi-evento",
-      "comprador_email": "mail@dominio.com",
-      "items": [{"tipo_ticket_id": 1, "cantidad": 2}, ...]
-    }
+    Crea la orden y los tickets a partir del payload del front.
+
+    Espera JSON:
+      {
+        "evento_slug": "...",
+        "items": [
+          {"tipo_ticket_id": 1, "cantidad": 2},
+          ...
+        ],
+        "buyer": {...},
+        "comprador_email": "...",   # opcional, se toma desde buyer.email
+        "promo_code": "CODIGO"      # opcional
+      }
+
+    Responde:
+      {
+        "order_id": <id>,
+        "success_url": "/orders/public/checkout/success/<id>/"
+      }
     """
-    data = request.data or {}
-    slug = data.get("evento_slug")
-    comprador_email = data.get("comprador_email")
-    items_payload = data.get("items", [])
-    promo_code = data.get("promo_code")
+    if request.method != "POST":
+        return JsonResponse({"detail": "Método no permitido."}, status=405)
 
-    if not slug or not comprador_email or not isinstance(items_payload, list) or not items_payload:
-        return Response({"detail": "Payload inválido."}, status=status.HTTP_400_BAD_REQUEST)
-
-    evento = get_object_or_404(Evento, slug=slug)
-
-    # Resolver tipos y cantidades
-    tipo_ids = [it.get("tipo_ticket_id") for it in items_payload if it.get("tipo_ticket_id") is not None]
-    tipos = {tt.id: tt for tt in TipoTicket.objects.filter(id__in=tipo_ids, evento=evento)}
-
-    items = []
-    for it in items_payload:
-        tt_id = it.get("tipo_ticket_id")
-        qty = int(it.get("cantidad") or 0)
-        tt = tipos.get(tt_id)
-
-        if not tt:
-            return Response({"detail": f"TipoTicket {tt_id} no pertenece al evento."},
-                            status=status.HTTP_400_BAD_REQUEST)
-        if qty <= 0:
-            return Response({"detail": f"Cantidad inválida para tipo {tt_id}."},
-                            status=status.HTTP_400_BAD_REQUEST)
-        if getattr(tt, "is_parking", False) and qty > 1:
-            return Response({"detail": "Estacionamiento: máximo 1 por orden."},
-                            status=status.HTTP_400_BAD_REQUEST)
-        if not getattr(tt, "is_parking", False) and qty > 10:
-            return Response({"detail": f"Máximo 10 por tipo {tt_id}."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        items.append({"tipo_ticket": tt, "cantidad": qty})
-
-
+    # Leer JSON
     try:
-        orden, tickets = crear_orden_y_tickets(
-            evento=evento,
-            comprador_email=comprador_email,
-            items=items,
-            created_by=None,
-            promo_code=promo_code,
-        )
-    except ValueError as e:
-        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"detail": "Payload inválido."}, status=400)
 
-    # Armar respuesta mínima (sin totales porque tu modelo no los tiene)
-    return Response({
-        "order_id": orden.id,
-        "evento": evento.slug,
-        "comprador_email": orden.comprador_email,
-        "tickets": [{"id": t.id, "code": str(t.code), "tipo_ticket_id": t.tipo_id} for t in tickets],
-        "created_at": orden.created_at.isoformat(),
-    }, status=status.HTTP_201_CREATED)
+    evento_slug = data.get("evento_slug")
+    items = data.get("items") or []
+    buyer = data.get("buyer") or {}
+    comprador_email = _clean_email(buyer.get("email") or data.get("comprador_email"))
+
+    promo_code = (data.get("promo_code") or "").strip() or None
+
+    if not evento_slug or not items:
+        return JsonResponse(
+            {"detail": "Faltan datos (evento o items)."},
+            status=400,
+        )
+
+    evento = get_object_or_404(Evento, slug=evento_slug)
+
+    # Transacción para consistencia
+    with transaction.atomic():
+        # Crear orden
+        orden = Orden.objects.create(
+            cuenta=evento.cuenta,
+            evento=evento,
+            comprador_email=comprador_email or "",
+        )
+
+        # Creamos tickets + construimos carrito para aplicar shared_code
+        tipos_map = {}
+        carrito = []  # [{ 'tipo': TipoTicket, 'cantidad': int, 'precio_unitario': Decimal }, ...]
+
+        for it in items:
+            try:
+                tt_id = int(it.get("tipo_ticket_id"))
+                cantidad = int(it.get("cantidad"))
+            except Exception:
+                return JsonResponse({"detail": "Ítems inválidos."}, status=400)
+
+            if cantidad <= 0:
+                continue
+
+            if tt_id not in tipos_map:
+                tipos_map[tt_id] = get_object_or_404(
+                    TipoTicket,
+                    pk=tt_id,
+                    evento=evento,
+                )
+            tipo = tipos_map[tt_id]
+
+            # Crear los tickets físicos
+            for _ in range(cantidad):
+                orden.tickets.create(evento=evento, tipo=tipo)
+
+            carrito.append({
+                "tipo": tipo,
+                "cantidad": cantidad,
+                "precio_unitario": Decimal(tipo.precio),
+            })
+
+        # Aplicar/consumir código si viene uno
+        if promo_code:
+            # 1) Intentamos consumir DiscountCode
+            dc = (
+                DiscountCode.objects
+                .select_for_update()
+                .filter(evento=evento, codigo__iexact=promo_code, activo=True)
+                .first()
+            )
+
+            hoy = timezone.now().date()
+
+            if dc:
+                # mismas validaciones que en la vista de validación
+                if (
+                    (not dc.vigente_desde or hoy >= dc.vigente_desde)
+                    and (not dc.vigente_hasta or hoy <= dc.vigente_hasta)
+                    and (dc.usos_maximos is None or dc.usos_actuales < dc.usos_maximos)
+                ):
+                    # si exige tipo_ticket, verificamos que esté en el carrito
+                    if not dc.tipo_ticket_id or any(
+                        c["tipo"].id == dc.tipo_ticket_id and c["cantidad"] > 0
+                        for c in carrito
+                    ):
+                        # consumimos un uso
+                        from django.db.models import F
+                        dc.usos_actuales = F("usos_actuales") + 1
+                        dc.save(update_fields=["usos_actuales"])
+            else:
+                # 2) Si no es DiscountCode, probamos SharedPurchaseCode (cortesía)
+                sc = (
+                    SharedPurchaseCode.objects
+                    .select_for_update()
+                    .filter(code=promo_code, evento=evento, active=True)
+                    .first()
+                )
+                if sc:
+                    # Actualiza used_count según las entradas que usaron el código
+                    confirmar_compra_con_shared_code(orden, sc, carrito)
+
+        # Generar el código compartible N-1 para esta compra (si corresponde)
+        finalizar_pago_y_generar_codigo(orden)
+
+    success_url = f"/orders/public/checkout/success/{orden.id}/"
+    return JsonResponse({"order_id": orden.id, "success_url": success_url}, status=201)
+
 
 
 @csrf_exempt
-@api_view(["POST"])
-@permission_classes([AllowAny])
+def promo_validar(request):
+    """
+    Esqueleto mínimo para el validador de códigos.
+    Hoy no aplica ninguna regla (si envías algo, lo marca válido= True).
+    Ajustaremos aquí cuando conectemos tu modelo de descuentos/cortesías.
+    """
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        data = {}
+
+    code = (data.get("code") or "").strip()
+    result = {
+        "ok": bool(code),
+        "code": code,
+        "discount": 0,
+        "type": "none",
+        "message": "Código aceptado (placeholder)." if code else "Código vacío.",
+    }
+    return JsonResponse(result, status=200 if code else 400)
+
+def shared_code_validate(request):
+    code = request.POST.get('code', '').strip()
+    evento_id = request.POST.get('evento_id')
+    if not code or not evento_id:
+        return HttpResponseBadRequest("Faltan parámetros")
+
+    try:
+        sc = SharedPurchaseCode.objects.get(code=code, evento_id=evento_id)
+    except SharedPurchaseCode.DoesNotExist:
+        return JsonResponse({"ok": False, "reason": "Código inexistente"}, status=404)
+
+    return JsonResponse({
+        "ok": sc.is_valid_now(),
+        "remaining_uses": sc.remaining_uses,
+        "max_uses": sc.max_uses,
+        "message": (
+            "Código válido" if sc.is_valid_now() else
+            "Código sin usos disponibles o inactivo/expirado"
+        )
+    })
+
+
 def validar_promocode(request):
     """
-    Payload:
-    {
-      "evento_slug": "aquasur-2026",
-      "code": "DESCUENTO10",
-      "items": [{"tipo_ticket_id": 1, "cantidad": 2}, ...]
-    }
-    Respuesta (200):
-    { "ok": true/false, "message": str, "discount_amount": int }
+    Valida un código de descuento / cortesía contra el carrito actual.
+
+    El front envía JSON:
+      {
+        "evento_slug": "...",
+        "code": "CODIGO",
+        "items": [
+          {"tipo_ticket_id": 1, "cantidad": 2},
+          ...
+        ]
+      }
+
+    Respuesta esperada por el front:
+      {
+        "ok": true/false,
+        "discount_amount": <int>,
+        "message": "texto para mostrar"
+      }
     """
-    data = request.data or {}
-    slug = data.get("evento_slug")
+    if request.method != "POST":
+        return JsonResponse(
+            {"ok": False, "message": "Método no permitido."},
+            status=405,
+        )
+
+    # Leer JSON del body
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse(
+            {"ok": False, "message": "Payload inválido."},
+            status=400,
+        )
+
     code = (data.get("code") or "").strip()
+    evento_slug = (data.get("evento_slug") or "").strip()
     items = data.get("items") or []
 
-    if not slug or not code or not isinstance(items, list):
-        return Response({"ok": False, "message": "Payload inválido."}, status=400)
+    if not code or not evento_slug:
+        return JsonResponse(
+            {"ok": False, "message": "Faltan datos para validar el código."},
+            status=400,
+        )
 
-    evento = get_object_or_404(Evento, slug=slug)
+    # Buscar evento
+    event = get_object_or_404(Evento, slug=evento_slug)
+
+    # Construimos carrito a partir de items
+    # carrito = [{ 'tipo': TipoTicket, 'cantidad': int, 'precio_unitario': Decimal }, ...]
+    if not isinstance(items, list) or not items:
+        return JsonResponse(
+            {"ok": False, "message": "No hay tickets en el carrito."},
+            status=400,
+        )
+
+    # Mapear ids de tipo de ticket
+    ids = set()
+    for it in items:
+        try:
+            tt_id = int(it.get("tipo_ticket_id"))
+            cantidad = int(it.get("cantidad") or 0)
+        except Exception:
+            continue
+        if cantidad > 0:
+            ids.add(tt_id)
+
+    if not ids:
+        return JsonResponse(
+            {"ok": False, "message": "No hay tickets en el carrito."},
+            status=400,
+        )
+
+    tipos_map = {
+        t.id: t
+        for t in TipoTicket.objects.filter(evento=event, id__in=ids)
+    }
+
+    carrito = []
+    subtotal = Decimal("0")
+
+    for it in items:
+        try:
+            tt_id = int(it.get("tipo_ticket_id"))
+            cantidad = int(it.get("cantidad") or 0)
+        except Exception:
+            continue
+        if cantidad <= 0:
+            continue
+        tt = tipos_map.get(tt_id)
+        if not tt:
+            continue
+        price = Decimal(tt.precio)
+        carrito.append({
+            "tipo": tt,
+            "cantidad": cantidad,
+            "precio_unitario": price,
+        })
+        subtotal += price * cantidad
+
+    if subtotal <= 0:
+        return JsonResponse(
+            {"ok": False, "message": "No hay tickets válidos en el carrito."},
+            status=400,
+        )
+
+    # 1) Intentamos primero código de descuento manual (DiscountCode)
+    dc = (
+        DiscountCode.objects
+        .filter(evento=event, codigo__iexact=code, activo=True)
+        .first()
+    )
+
+    hoy = timezone.now().date()
+
+    if dc:
+        # Vigencia
+        if dc.vigente_desde and hoy < dc.vigente_desde:
+            return JsonResponse(
+                {"ok": False, "message": "El código aún no está vigente."},
+                status=400,
+            )
+        if dc.vigente_hasta and hoy > dc.vigente_hasta:
+            return JsonResponse(
+                {"ok": False, "message": "El código ya no está vigente."},
+                status=400,
+            )
+        if dc.usos_maximos is not None and dc.usos_actuales >= dc.usos_maximos:
+            return JsonResponse(
+                {"ok": False, "message": "Este código alcanzó su límite de usos."},
+                status=400,
+            )
+
+        # Si exige un tipo de ticket específico, validamos que esté en el carrito
+        if dc.tipo_ticket_id:
+            tiene_tipo = any(
+                c["tipo"].id == dc.tipo_ticket_id and c["cantidad"] > 0
+                for c in carrito
+            )
+            if not tiene_tipo:
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "message": "Este código requiere un tipo de ticket específico en el carrito.",
+                    },
+                    status=400,
+                )
+
+        # Descuento fijo en CLP, acotado al subtotal
+        discount_amount = int(min(Decimal(dc.monto_descuento), subtotal))
+        if discount_amount <= 0:
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "message": "El código no genera descuento con este carrito.",
+                    "discount_amount": 0,
+                },
+                status=400,
+            )
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "kind": "fixed",
+                "discount_amount": discount_amount,
+                "message": f"Código aplicado. Descuento de {discount_amount:,} CLP.",
+            }
+        )
+
+    # 2) Si no es DiscountCode, probamos con código de cortesía SharedPurchaseCode
+    sc = (
+        SharedPurchaseCode.objects
+        .filter(code=code, evento=event, active=True)
+        .first()
+    )
+
+    if sc:
+        # Usamos la función de servicio que ya calcula descuento N-1
+        discount_decimal = aplicar_shared_code_en_carrito(carrito, sc)
+        discount_amount = int(discount_decimal or 0)
+
+        if discount_amount <= 0:
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "kind": "shared",
+                    "discount_amount": 0,
+                    "message": "El código de cortesía no se puede aplicar a este carrito.",
+                },
+                status=400,
+            )
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "kind": "shared",
+                "discount_amount": discount_amount,
+                "message": "Código de cortesía aplicado.",
+            }
+        )
+
+    # 3) Ningún código encontrado
+    return JsonResponse(
+        {"ok": False, "message": "El código ingresado no es válido."},
+        status=404,
+    )
+
+
+
+
+def _count_non_parking_tickets(orden):
+    return orden.tickets.filter(tipo__is_parking=False).count()
+
+def finalizar_pago_y_generar_codigo(orden):
+    n_tickets = _count_non_parking_tickets(orden)
+    if n_tickets > 1:
+        SharedPurchaseCode.objects.create(
+            orden=orden,
+            evento=orden.evento,
+            max_uses=n_tickets - 1
+        )
+    return orden
+
+
+def shared_code_validate(request):
+    code = request.POST.get('code', '').strip()
+    evento_id = request.POST.get('evento_id')
+    if not code or not evento_id:
+        return HttpResponseBadRequest("Faltan parámetros")
+
     try:
-        d = DiscountCode.objects.select_related("evento", "tipo_ticket", "evento__cuenta") \
-                                .get(codigo__iexact=code, evento=evento)
-    except DiscountCode.DoesNotExist:
-        return Response({"ok": False, "message": "El código ingresado no es válido."}, status=200)
+        sc = SharedPurchaseCode.objects.get(code=code, evento_id=evento_id)
+    except SharedPurchaseCode.DoesNotExist:
+        return JsonResponse({"ok": False, "reason": "Código inexistente"}, status=404)
 
-    if not d.disponible():
-        return Response({"ok": False, "message": "Este código ya fue utilizado o fuera de vigencia."}, status=200)
+    return JsonResponse({
+        "ok": sc.is_valid_now(),
+        "remaining_uses": sc.remaining_uses,
+        "max_uses": sc.max_uses,
+        "message": ("Código válido" if sc.is_valid_now() else "Sin usos o expirado")
+    })
 
-    # Si exige tipo_ticket, debe estar en el carrito
-    if d.tipo_ticket_id:
-        present = any(int(it.get("tipo_ticket_id") or 0) == d.tipo_ticket_id and int(it.get("cantidad") or 0) > 0 for it in items)
-        if not present:
-            return Response({"ok": False, "message": "El código aplica a un tipo de ticket específico no presente en tu selección."}, status=200)
 
-    # Descuento: monto fijo sobre TOTAL (no per-item)
-    discount_amount = int(d.monto_descuento or 0)
-    if discount_amount <= 0:
-        return Response({"ok": False, "message": "El código no tiene un monto válido."}, status=200)
-
-    return Response({"ok": True, "message": "Código aplicado.", "discount_amount": discount_amount}, status=200)

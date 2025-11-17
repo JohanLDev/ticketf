@@ -4,8 +4,10 @@ from django.db import transaction
 from django.utils import timezone
 from django.db.models import F
 from orders.models import Orden, Ticket
+from orders.models import SharedPurchaseCode
 #from tickets.models import Discount
 
+from decimal import Decimal
 
 
 def _get_discount_model():
@@ -89,3 +91,81 @@ def _consumir_descuento(*, evento, promo_code):
 
     d.usos_actuales = F('usos_actuales') + 1
     d.save(update_fields=['usos_actuales'])
+
+
+
+def _count_non_parking_tickets(orden):
+    # Ajusta según tu modelo: asumiendo orden.tickets relaciona Ticket -> TipoTicket con flag is_parking
+    return orden.tickets.filter(tipo__is_parking=False).count()
+
+def finalizar_pago_y_generar_codigo(orden):
+    n_tickets = _count_non_parking_tickets(orden)
+    if n_tickets > 1:
+        SharedPurchaseCode.objects.create(
+            orden=orden,
+            evento=orden.evento,
+            max_uses=n_tickets - 1
+        )
+    return orden
+
+
+def aplicar_shared_code_en_carrito(carrito, shared_code):
+    """
+    carrito: lista de dicts con items:
+        { 'tipo': TipoTicket, 'cantidad': int, 'precio_unitario': Decimal }
+    Excluye tipo.is_parking.
+    Retorna un Decimal con el total de descuento.
+    """
+    if not shared_code or not shared_code.is_valid_now():
+        return Decimal('0')
+
+    usos_disp = shared_code.remaining_uses
+    if usos_disp <= 0:
+        return Decimal('0')
+
+    entradas = [i for i in carrito if not i['tipo'].is_parking and i['cantidad'] > 0]
+    entradas.sort(key=lambda x: x['precio_unitario'], reverse=True)
+
+    descuento_total = Decimal('0')
+    usos_restantes = usos_disp
+
+    for item in entradas:
+        if usos_restantes <= 0:
+            break
+        aplicar_a = min(item['cantidad'], usos_restantes)
+        descuento_total += item['precio_unitario'] * aplicar_a
+        usos_restantes -= aplicar_a
+
+    return descuento_total
+
+
+def confirmar_compra_con_shared_code(orden, shared_code, carrito):
+    """
+    Llamar después de crear la orden y los tickets (durante confirmación).
+    Actualiza el contador de usos del shared_code.
+    """
+    if not shared_code or not shared_code.is_valid_now():
+        return
+
+    usos_necesarios = 0
+    entradas = [i for i in carrito if not i['tipo'].is_parking and i['cantidad'] > 0]
+    entradas.sort(key=lambda x: x['precio_unitario'], reverse=True)
+
+    usos_disp = shared_code.remaining_uses
+    for item in entradas:
+        if usos_disp <= 0:
+            break
+        aplica = min(item['cantidad'], usos_disp)
+        usos_necesarios += aplica
+        usos_disp -= aplica
+
+    if usos_necesarios <= 0:
+        return
+
+    with transaction.atomic():
+        sc = SharedPurchaseCode.objects.select_for_update().get(pk=shared_code.pk)
+        puede = max(0, sc.max_uses - sc.used_count)
+        aplica_final = min(puede, usos_necesarios)
+        if aplica_final > 0:
+            sc.used_count += aplica_final
+            sc.save(update_fields=['used_count'])

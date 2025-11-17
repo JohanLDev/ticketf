@@ -40,8 +40,12 @@ urlpatterns = [
     path("public/checkout/<int:order_id>/pdf/", views_pdf.order_tickets_pdf, name="public-order-pdf"),
     path("public/event/<slug:slug>/comprar/datos/", views_public.checkout_step3_form, name="public-checkout-step3"),
     path("public/", views_public.home_public, name="public-home"),
-    path('api/promo/validar/', views_public_api.validar_promocode, name='api-promo-validar'),
+    path('api/promo/validar/', views_public_api.validar_promocode, name='api-promo-validar'),  # <- deja esta
     path('public/checkout/pay/<slug:slug>/', views_public.public_checkout_pay, name='public-checkout-pay'),
+    # si vas a usar el shared code:
+    # path('api/shared-code/validate', views_public_api.shared_code_validate, name='shared_code_validate'),
+    path('api/shared-code/validate/', views_public_api.shared_code_validate, name='shared_code_validate'),
 
-
+    path("ticket/<uuid:code>/pdf/", views.ticket_pdf_by_user, name="ticket_pdf_user"),
+    
 ]

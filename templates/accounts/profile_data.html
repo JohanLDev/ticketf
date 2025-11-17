@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Mis datos</h1>
+
+<ul class="nav nav-tabs mt-4">
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'accounts:user_tickets' %}">
+      Mis tickets
+    </a>
+  </li>
+
+  <li class="nav-item">
+    <a class="nav-link active" href="#">
+      Mis datos
+    </a>
+  </li>
+</ul>
+
+<div class="mt-4">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button class="btn btn-primary" type="submit">
+      Guardar cambios
+    </button>
+  </form>
+</div>
+
+{% endblock %}

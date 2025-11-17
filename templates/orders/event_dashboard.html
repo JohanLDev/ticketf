@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Analítica — {{ evento.nombre }}{% endblock %}
 {% block content %}
+
+<div class="container container-int">
 <h1>{{ evento.nombre }} — Analítica</h1>
 
 <!-- Filtros de fecha -->
@@ -56,7 +58,7 @@
 <!-- Donut de asistencia general -->
 <!-- Asistencia general (barra de progreso KPI) -->
 <div class="mt-5">
-  <h3>Asistencia general</h3>
+  <h3 class="analitica-titulo">Asistencia general</h3>
   <div class="progress" style="height: 28px;">
     <div id="asistenciaBar"
          class="progress-bar bg-success"
@@ -72,33 +74,56 @@
 
 
 <!-- Gráficos -->
-<h3 class="mt-5">Distribución de tickets por tipo</h3>
-<canvas id="chartTipos" height="120"></canvas>
 
-<h3 class="mt-5">Validaciones por tipo</h3>
-<canvas id="chartValidadosTipo" height="120"></canvas>
+<div class="chart-box">
+  <h3 class="mt-5 analitica-titulo analitica-titulo-graph">Distribución de tickets por tipo</h3>
+  <canvas id="chartTipos"></canvas>
+</div>
 
-<h3 class="mt-5">Evolución diaria de validaciones</h3>
-<canvas id="chartDiario" height="120"></canvas>
+<div class="chart-box-divi"></div>
 
-<h3 class="mt-5">Emitidos vs Validados por tipo</h3>
-<canvas id="chartComparativo" height="120"></canvas>
+<div class="chart-box">
+  <h3 class="mt-5 analitica-titulo analitica-titulo-graph">Validaciones por tipo</h3>
+  <canvas id="chartValidadosTipo"></canvas>
+</div>
 
-<!-- Botones -->
-<a href="{% url 'orders:event-export-csv' evento.id %}" target="_blank" class="btn btn-outline-success mt-4">
-  Descargar CSV de asistentes
-</a>
-<a href="{% url 'orders:event-report-pdf' evento.id %}" target="_blank" class="btn btn-outline-dark mt-4">
-  Descargar informe PDF
-</a>
+<div class="chart-box-divi"></div>
 
-<a href="{% url 'events:list' %}" class="btn btn-outline-secondary mt-4">Volver a eventos</a>
+<div class="chart-box">
+  <h3 class="mt-5 analitica-titulo analitica-titulo-graph">Evolución diaria de validaciones</h3>
+  <canvas id="chartDiario"></canvas>
+</div>
+
+<div class="chart-box-divi"></div>
+
+<div class="chart-box">
+  <h3 class="mt-5 analitica-titulo analitica-titulo-graph">Emitidos vs Validados por tipo</h3>
+  <canvas id="chartComparativo"></canvas>
+</div>
+
+<div class="chart-box chart-box-btns">
+  <!-- Botones -->
+  <a href="{% url 'orders:event-export-csv' evento.id %}" target="_blank" class="btn btn-outline-success mt-4 a-site excel">
+    Descargar CSV de asistentes
+  </a>
+  <a href="{% url 'orders:event-report-pdf' evento.id %}" target="_blank" class="btn btn-outline-dark mt-4 a-site pdf">
+    Descargar informe PDF
+  </a>
+
+  <a href="{% url 'events:list' %}" class="btn btn-outline-secondary mt-4 a-site back">Volver a eventos</a>
+</div>
+
+
+
 
 <!-- Datos iniciales -->
 {{ tipos_data|json_script:"tipos-data" }}
 {{ validados_por_tipo|json_script:"validados-tipo" }}
 {{ validados_por_dia|json_script:"validados-dia" }}
 {{ emitidos_vs_validados|json_script:"emitidos-vs-validados" }}
+
+
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
