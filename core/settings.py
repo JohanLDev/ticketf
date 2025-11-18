@@ -32,10 +32,7 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 
-ALLOWED_HOSTS = os.environ.get(
-    "ALLOWED_HOSTS",
-    "127.0.0.1,localhost"
-).split(",")
+ALLOWED_HOSTS = ['ticket-f.cl', 'www.ticket-f.cl', '52.91.168.170']
 
 
 
@@ -92,27 +89,19 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DB_ENGINE = os.environ.get("DB_ENGINE", "sqlite")
-
-if DB_ENGINE == "postgres":
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("DB_NAME"),
-            "USER": os.environ.get("DB_USER"),
-            "PASSWORD": os.environ.get("DB_PASSWORD"),
-            "HOST": os.environ.get("DB_HOST", "localhost"),
-            "PORT": os.environ.get("DB_PORT", "5432"),
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'ticketf',
+        'USER': 'admin',
+        'PASSWORD': 't1ck3t3ra',
+        'HOST': 'ticketf-db.ck7i4iimonnc.us-east-1.rds.amazonaws.com',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
     }
-else:
-    # Por defecto, SQLite para desarrollo local
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / os.environ.get("DB_NAME", "db.sqlite3"),
-        }
-    }
+}
 
 
 
