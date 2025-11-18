@@ -1,11 +1,11 @@
 # tickets/views_discounts.py
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django import forms
-
 from accounts.models import Cuenta           # <— usamos el modelo directo
 from events.models import Evento
 from tickets.models import TipoTicket, DiscountCode
+from django.contrib import messages
 
 # Fallback para resolver la cuenta actual SIN depender de accounts.utils
 def _current_account(request):
@@ -68,3 +68,47 @@ def discounts_create(request):
             return redirect("tickets:discounts_list")
 
     return render(request, "tickets/discounts_form.html", {"cuenta": cuenta, "form": form})
+
+@login_required
+def discounts_edit(request, pk):
+    cuenta = _current_account(request)
+    descuento = get_object_or_404(DiscountCode, pk=pk, cuenta=cuenta)
+
+    form = DiscountForm(request.POST or None, instance=descuento)
+    # limitar selects a la cuenta actual
+    form.fields["evento"].queryset = Evento.objects.filter(cuenta=cuenta)
+    form.fields["tipo_ticket"].queryset = TipoTicket.objects.filter(evento__cuenta=cuenta)
+
+    if request.method == "POST" and form.is_valid():
+        d = form.save(commit=False)
+        vd, vh = d.vigente_desde, d.vigente_hasta
+        if vd and vh and vd > vh:
+            form.add_error("vigente_hasta", "La fecha de término debe ser posterior al inicio.")
+        else:
+            # NO tocamos usos_actuales aquí, solo se modifica lo que venga del form
+            d.save()
+            messages.success(request, "Descuento actualizado correctamente.")
+            return redirect("tickets:discounts_list")
+
+    return render(
+        request,
+        "tickets/discounts_form.html",
+        {"cuenta": cuenta, "form": form},
+    )
+
+@login_required
+def discounts_delete(request, pk):
+    cuenta = _current_account(request)
+    descuento = get_object_or_404(DiscountCode, pk=pk, cuenta=cuenta)
+
+    if request.method == "POST":
+        nombre = descuento.codigo
+        descuento.delete()
+        messages.success(request, f"El descuento '{nombre}' fue eliminado correctamente.")
+        return redirect("tickets:discounts_list")
+
+    return render(
+        request,
+        "tickets/discounts_delete_confirm.html",
+        {"cuenta": cuenta, "obj": descuento},
+    )

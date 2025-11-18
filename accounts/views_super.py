@@ -226,3 +226,44 @@ def editar_admin(request, cuenta_id, rol_id):
         "form": form,
     }
     return render(request, "super/editar_admin.html", context)
+
+
+@login_required
+@is_super
+def super_editar_cuenta(request, cuenta_id):
+    # cuenta_id es UUID
+    cuenta = get_object_or_404(Cuenta, id=cuenta_id)
+
+    if request.method == "POST":
+        form = CuentaForm(request.POST, instance=cuenta)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Cuenta actualizada correctamente.")
+            return redirect("accounts:super_cuentas")
+    else:
+        form = CuentaForm(instance=cuenta)
+
+    context = {
+        "form": form,
+        "cuenta": cuenta,
+        "modo": "editar",
+    }
+    return render(request, "super/cuenta_form.html", context)
+
+
+@login_required
+@is_super
+def super_eliminar_cuenta(request, cuenta_id):
+    # cuenta_id es UUID
+    cuenta = get_object_or_404(Cuenta, id=cuenta_id)
+
+    if request.method == "POST":
+        nombre = cuenta.nombre
+        cuenta.delete()
+        messages.success(
+            request,
+            f"La cuenta '{nombre}' fue eliminada correctamente."
+        )
+        return redirect("accounts:super_cuentas")
+
+    return render(request, "super/cuenta_delete_confirm.html", {"cuenta": cuenta})

@@ -33,6 +33,16 @@
            href="{% url 'accounts:ver_admins' c.id %}">
           Ver admins
         </a>
+
+        <a class="btn btn-outline-secondary btn-sm a-site"
+           href="{% url 'accounts:super_editar_cuenta' c.id %}">
+          Editar
+        </a>
+
+        <a class="btn btn-outline-danger btn-sm a-site"
+           href="{% url 'accounts:super_eliminar_cuenta' c.id %}">
+          Eliminar
+        </a>
       </td>
     </tr>
   {% empty %}

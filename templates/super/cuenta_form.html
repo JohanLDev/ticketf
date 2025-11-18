@@ -1,16 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Crear cuenta{% endblock %}
+{% block title %}
+  {% if modo == "editar" %}Editar cuenta{% else %}Crear cuenta{% endif %}
+{% endblock %}
+
 {% block content %}
-
 <div class="container container-int">
+  <h1>
+    {% if modo == "editar" %}Editar cuenta{% else %}Crear cuenta{% endif %}
+  </h1>
 
-<form method="post" class="form-general">
-    <h1>Crear cuenta</h1>
+  <form method="post" class="form-general">
+    {% csrf_token %}
+    {{ form.as_p }}
 
-    {% csrf_token %}{{ form.as_p }}
-    
-    <button class="btn btn-success btn-site">Guardar</button>
-</form>
+    <button class="btn btn-success btn-site">
+      {% if modo == "editar" %}Guardar cambios{% else %}Guardar{% endif %}
+    </button>
+  </form>
 </div>
-
 {% endblock %}

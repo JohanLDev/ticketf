@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Eliminar cuenta{% endblock %}
+
+{% block content %}
+<div class="container container-int">
+  <h1>Eliminar cuenta</h1>
+
+  <p>
+    ¿Estás seguro que quieres eliminar la cuenta
+    <strong>{{ cuenta.nombre }}</strong>?
+  </p>
+
+  <p class="text-muted">
+    Esta acción no se puede deshacer y se perderán todos los datos asociados a esta cuenta.
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+    <a href="{% url 'accounts:super_cuentas' %}" class="btn btn-secondary">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

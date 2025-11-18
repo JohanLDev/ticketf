@@ -1,12 +1,23 @@
 from django.urls import path
 from . import views
 from . import views_super
-from .views_super import super_cuentas, super_crear_cuenta, super_asignar_admin
+
+from .views_super import (
+    super_cuentas,
+    super_crear_cuenta,
+    super_asignar_admin,
+    super_editar_cuenta,
+    super_eliminar_cuenta,
+)
+
+
 from .views_admin import select_account, admin_dashboard
 from .views import LoginView, LogoutView, RegisterView
 
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
+
+
 
 app_name = "accounts"
 
@@ -36,13 +47,16 @@ urlpatterns = [
     # PANEL ADMIN
     path("admin/select-account/", select_account, name="select_account"),
     path("admin/dashboard/", admin_dashboard, name="admin_dashboard"),
-
     path("super/cuentas/<uuid:cuenta_id>/admins/",views_super.ver_admins, name="ver_admins",),
-
     path( "super/cuentas/<uuid:cuenta_id>/admins/<uuid:rol_id>/eliminar/", views_super.eliminar_admin, name="eliminar_admin", ),
-
     path( "super/cuentas/<uuid:cuenta_id>/admins/<uuid:rol_id>/editar/", views_super.editar_admin, name="editar_admin",),
 
+    path( "super/cuentas/<uuid:cuenta_id>/editar/", super_editar_cuenta, name="super_editar_cuenta", ),
+    path(
+        "super/cuentas/<uuid:cuenta_id>/eliminar/",
+        super_eliminar_cuenta,
+        name="super_eliminar_cuenta",
+    ),
 
     path(
         "password-reset/",
@@ -88,5 +102,9 @@ urlpatterns = [
     path("plan/checkout/", views.account_plan_checkout, name="account_plan_checkout"),
     path("plan/live-heatmap/", views.premium_heatmap, name="premium_heatmap"),
     path("plan/reportes-premium/", views.premium_reports, name="premium_reports"),
+
+
+
+
 
 ]

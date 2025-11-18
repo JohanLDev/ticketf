@@ -8,7 +8,7 @@
     <a class="btn btn-primary a-site" href="{% url 'tickets:discounts_create' %}">Crear descuento</a>
   </div>
 
-  <table class="table">
+    <table class="table">
     <thead>
       <tr>
         <th>Código</th>
@@ -19,6 +19,7 @@
         <th>Usos</th>
         <th>Vigencia</th>
         <th>Activo</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
@@ -35,11 +36,22 @@
           {% if d.vigente_hasta %}{{ d.vigente_hasta }}{% else %}-{% endif %}
         </td>
         <td>{{ d.activo|yesno:"Sí,No" }}</td>
+        <td>
+          <a class="btn btn-sm btn-outline-secondary a-site"
+             href="{% url 'tickets:discounts_edit' d.id %}">
+            Editar
+          </a>
+          <a class="btn btn-sm btn-outline-danger a-site"
+             href="{% url 'tickets:discounts_delete' d.id %}">
+            Eliminar
+          </a>
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="8" class="text-muted">Aún no hay descuentos creados.</td></tr>
+      <tr><td colspan="9" class="text-muted">Aún no hay descuentos creados.</td></tr>
       {% endfor %}
     </tbody>
   </table>
+
 </div>
 {% endblock %}
