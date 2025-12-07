@@ -36,7 +36,7 @@ urlpatterns = [
     path("public/event/<slug:slug>/", views_public.event_public_detail, name="public-event"),
     path("public/event/<slug:slug>/comprar/", views_public.checkout_step1, name="public-checkout-step1"),
     path("api/checkout/", views_public_api.checkout_crear_orden, name="public-checkout-create"),
-    path("public/checkout/success/<int:order_id>/", views_public.checkout_success, name="public-checkout-success"),
+    path("public/checkout/success/<int:order_id>/", views_public.public_checkout_success, name="public-checkout-success"),
     path("public/checkout/<int:order_id>/pdf/", views_pdf.order_tickets_pdf, name="public-order-pdf"),
     path("public/event/<slug:slug>/comprar/datos/", views_public.checkout_step3_form, name="public-checkout-step3"),
     path("public/", views_public.home_public, name="public-home"),
@@ -47,5 +47,20 @@ urlpatterns = [
     path('api/shared-code/validate/', views_public_api.shared_code_validate, name='shared_code_validate'),
 
     path("ticket/<uuid:code>/pdf/", views.ticket_pdf_by_user, name="ticket_pdf_user"),
+
+    path(
+        "analytics/<int:event_id>/financial/",
+        views_reports.event_financial_report,
+        name="event-financial-report",
+    ),
+    
+    path(
+        "events/<int:event_id>/orders/",
+        views_operational.orders_by_event,
+        name="orders-by-event",
+    ),
+
+
+    path( "public/<slug:slug>/checkout/webpay-return/", views_public.webpay_return, name="webpay-return",),
     
 ]

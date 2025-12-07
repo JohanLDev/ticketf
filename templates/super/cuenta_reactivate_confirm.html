@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Reactivar cuenta{% endblock %}
+
+{% block content %}
+<div class="container container-int">
+  <h1>Reactivar cuenta</h1>
+
+  <p>¿Quieres reactivar la cuenta <strong>{{ cuenta.nombre }}</strong>?</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-success" type="submit">Reactivar</button>
+    <a class="btn btn-secondary" href="{% url 'accounts:super_cuentas' %}">Cancelar</a>
+  </form>
+
+</div>
+{% endblock %}

@@ -23,6 +23,9 @@ from xhtml2pdf import pisa
 import io, base64, qrcode
 from django.db import transaction
 
+from django.core.paginator import Paginator
+from django.db.models import Q
+
 
 
 # ---------- FORMULARIO ----------
@@ -64,12 +67,50 @@ class OrderForm(forms.Form):
         )
 
 
-# ---------- VISTAS ----------
 @require_role("admin", "staff")
 def order_list(request):
     cuenta = get_current_cuenta(request)
-    qs = Orden.objects.filter(cuenta=cuenta).select_related("evento")
-    return render(request, "orders/list.html", {"ordenes": qs})
+
+    # queryset base: órdenes de la cuenta
+    qs = (
+        Orden.objects
+        .filter(cuenta=cuenta)
+        .select_related("evento")
+        .order_by("-created_at")
+    )
+
+    # -------- Filtros --------
+    q = (request.GET.get("q") or "").strip()
+    desde = request.GET.get("desde") or ""
+    hasta = request.GET.get("hasta") or ""
+
+    if q:
+        qs = qs.filter(
+            Q(id__icontains=q) |
+            Q(evento__nombre__icontains=q) |
+            Q(comprador_email__icontains=q)
+        )
+
+    if desde:
+        qs = qs.filter(created_at__date__gte=desde)
+    if hasta:
+        qs = qs.filter(created_at__date__lte=hasta)
+
+    # -------- Paginación --------
+    paginator = Paginator(qs, 20)  # 20 órdenes por página
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    contexto = {
+        "ordenes": page_obj.object_list,
+        "page_obj": page_obj,
+        "q": q,
+        "desde": desde,
+        "hasta": hasta,
+        "evento": None,  # para que el template pueda usarlo opcionalmente
+    }
+    return render(request, "orders/list.html", contexto)
+
 
 
 

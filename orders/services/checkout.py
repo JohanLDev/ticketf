@@ -6,6 +6,7 @@ from django.db.models import F
 from orders.models import Orden, Ticket
 from orders.models import SharedPurchaseCode
 #from tickets.models import Discount
+from tickets.models import TipoTicket
 
 from decimal import Decimal
 
@@ -98,7 +99,87 @@ def _count_non_parking_tickets(orden):
     # Ajusta según tu modelo: asumiendo orden.tickets relaciona Ticket -> TipoTicket con flag is_parking
     return orden.tickets.filter(tipo__is_parking=False).count()
 
-def finalizar_pago_y_generar_codigo(orden):
+def finalizar_pago_y_generar_codigo(*, evento, payload, buyer, webpay_data=None):
+    """
+    Se llama desde webpay_return después de que Webpay autoriza el pago.
+
+    - evento: instancia de Evento
+    - payload: dict guardado en sesión por public_checkout_pay
+        {
+            "items": [
+                {
+                    "tipo_ticket_id": <int>,
+                    "cantidad": <int>,
+                    "precio_unitario": <int>,
+                    "nombre": <str>,
+                },
+                ...
+            ],
+            "subtotal": <int>,
+            "discount": <int>,
+            "total": <int>,
+            "promo_code": <str|None>,
+        }
+    - buyer: dict con datos del comprador (al menos "email")
+    - webpay_data: dict con info de Webpay (token, authorization_code, etc.)
+      (por ahora la dejamos disponible por si luego quieres guardarla en la Orden)
+    """
+
+    # 1) Preparar items para crear la orden y los tickets
+    raw_items = payload.get("items", []) or []
+    items = []
+
+    for it in raw_items:
+        tipo_id = it.get("tipo_ticket_id")
+        cantidad = int(it.get("cantidad", 0) or 0)
+        if not tipo_id or cantidad <= 0:
+            continue
+
+        # Obtenemos el TipoTicket asociado a este evento
+        tipo = TipoTicket.objects.get(id=tipo_id, evento=evento)
+
+        items.append({
+            "tipo_ticket": tipo,
+            "cantidad": cantidad,
+        })
+
+    if not items:
+        raise ValueError("No se encontraron ítems válidos en el payload para crear la orden.")
+
+    # 2) Email del comprador
+    comprador_email = (
+        buyer.get("email")
+        or buyer.get("email1")
+        or buyer.get("email2")
+        or ""
+    ).strip()
+
+    if not comprador_email:
+        raise ValueError("No se encontró un email de comprador válido en 'buyer'.")
+
+    # 3) Crear la orden y los tickets (aplicando descuento si corresponde)
+    promo_code = payload.get("promo_code")
+    orden, tickets = crear_orden_y_tickets(
+        evento=evento,
+        comprador_email=comprador_email,
+        items=items,
+        promo_code=promo_code,
+    )
+
+    # 4) (Opcional) guardar datos de Webpay en la orden
+    #    Como tu modelo Orden actual no tiene campos para esto,
+    #    por ahora lo dejamos comentado. Si luego agregas campos, se puede usar.
+    #
+    # orden.webpay_token = webpay_data.get("token")
+    # orden.webpay_buy_order = webpay_data.get("buy_order")
+    # orden.webpay_amount = webpay_data.get("amount")
+    # orden.webpay_authorization_code = webpay_data.get("authorization_code")
+    # orden.save(update_fields=[
+    #     "webpay_token", "webpay_buy_order",
+    #     "webpay_amount", "webpay_authorization_code"
+    # ])
+
+    # 5) Generar SharedPurchaseCode si corresponde (misma lógica que tenías antes)
     n_tickets = _count_non_parking_tickets(orden)
     if n_tickets > 1:
         SharedPurchaseCode.objects.create(
@@ -106,7 +187,9 @@ def finalizar_pago_y_generar_codigo(orden):
             evento=orden.evento,
             max_uses=n_tickets - 1
         )
+
     return orden
+
 
 
 def aplicar_shared_code_en_carrito(carrito, shared_code):

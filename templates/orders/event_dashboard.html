@@ -109,9 +109,13 @@
   <a href="{% url 'orders:event-report-pdf' evento.id %}" target="_blank" class="btn btn-outline-dark mt-4 a-site pdf">
     Descargar informe PDF
   </a>
+  <a href="{% url 'orders:event-financial-report' evento.id %}" class="btn btn-outline-primary mt-4 a-site">
+    Ver reporte financiero
+  </a>
 
   <a href="{% url 'events:list' %}" class="btn btn-outline-secondary mt-4 a-site back">Volver a eventos</a>
 </div>
+
 
 
 

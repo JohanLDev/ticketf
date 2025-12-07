@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Reporte financiero — {{ evento.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container container-int">
+  <h1>Reporte financiero — {{ evento.nombre }}</h1>
+  <p class="text-muted">
+    Resumen económico de tickets emitidos (sin considerar descuentos explícitos por ahora).
+  </p>
+
+  <!-- KPIs principales -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-success text-center">
+        <div class="card-body">
+          <h6 class="card-title">Total bruto</h6>
+          <h3>${{ total_bruto|floatformat:0 }}</h3>
+          <small class="text-muted">Suma de todos los tickets no anulados</small>
+          <div class="mt-1">
+            <small class="text-muted">
+              {{ total_tickets }} tickets en total
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-info text-center">
+        <div class="card-body">
+          <h6 class="card-title">Tickets estacionamiento</h6>
+          <h3>${{ total_parking|floatformat:0 }}</h3>
+          <small class="text-muted">Solo tipos marcados como estacionamiento</small>
+          <div class="mt-1">
+            <small class="text-muted">
+              {{ parking_tickets }} tickets ({{ parking_pct_count }}% de los tickets)
+            </small>
+            <br>
+            <small class="text-muted">
+              {{ parking_pct_amount }}% del monto total
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-primary text-center">
+        <div class="card-body">
+          <h6 class="card-title">Otros tickets</h6>
+          <h3>${{ total_no_parking|floatformat:0 }}</h3>
+          <small class="text-muted">Entradas, congresos, etc.</small>
+          <div class="mt-1">
+            <small class="text-muted">
+              {{ no_parking_tickets }} tickets
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-dark text-center">
+        <div class="card-body">
+          <h6 class="card-title">Descuentos</h6>
+          <h3>${{ descuentos_totales|floatformat:0 }}</h3>
+          <small class="text-muted">A implementar cuando tengamos montos de descuento</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Resumen neto -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="alert alert-success">
+        <strong>Total neto estimado:</strong>
+        <span class="float-end">${{ total_neto|floatformat:0 }}</span><br>
+        <small class="text-muted">Total bruto - descuentos (por ahora 0)</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalle por tipo de ticket -->
+  <h3>Detalle por tipo de ticket</h3>
+  <table class="table table-sm table-striped align-middle mt-3">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th class="text-center">¿Estacionamiento?</th>
+        <th class="text-end">Cantidad</th>
+        <th class="text-end">Precio unitario</th>
+        <th class="text-end">Monto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for fila in totales_por_tipo %}
+        <tr>
+          <td>{{ fila.tipo__nombre }}</td>
+          <td class="text-center">
+            {% if fila.tipo__is_parking %}
+              <span class="badge bg-info">Sí</span>
+            {% else %}
+              <span class="badge bg-secondary">No</span>
+            {% endif %}
+          </td>
+          <td class="text-end">{{ fila.cantidad }}</td>
+          <td class="text-end">${{ fila.precio|floatformat:0 }}</td>
+          <td class="text-end">${{ fila.monto|floatformat:0 }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted">
+            No hay tickets emitidos para este evento.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+
+  <a href="/orders/analytics/{{ evento.id }}/" class="btn btn-outline-secondary mt-3 a-site">
+    Volver a analítica del evento
+  </a>
+
+</div>
+{% endblock %}

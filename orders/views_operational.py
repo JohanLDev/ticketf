@@ -4,6 +4,13 @@ from django.contrib import messages
 from django.db import transaction
 from accounts.utils import get_current_cuenta, require_role
 from .models import Ticket, TicketActionLog
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from events.models import Evento
+from .models import Orden
+from django.core.paginator import Paginator
+from django.db.models import Q
+
 
 @require_POST
 @require_role("superadmin", "admin")
@@ -50,3 +57,47 @@ def ticket_reissue(request, ticket_id):
 
     messages.success(request, f"Creado ticket de reemplazo #{new_t.id} para el #{old.id}.")
     return redirect("orders:detail", pk=old.orden_id)
+
+
+@require_role("superadmin", "admin", "staff")
+def orders_by_event(request, event_id):
+    cuenta = get_current_cuenta(request)
+    evento = get_object_or_404(Evento, id=event_id, cuenta=cuenta)
+
+    qs = (
+        Orden.objects
+        .filter(cuenta=cuenta, evento=evento)
+        .select_related("evento")
+        .order_by("-created_at")
+    )
+
+    # -------- Filtros --------
+    q = (request.GET.get("q") or "").strip()
+    desde = request.GET.get("desde") or ""
+    hasta = request.GET.get("hasta") or ""
+
+    if q:
+        qs = qs.filter(
+            Q(id__icontains=q) |
+            Q(comprador_email__icontains=q)
+        )
+
+    if desde:
+        qs = qs.filter(created_at__date__gte=desde)
+    if hasta:
+        qs = qs.filter(created_at__date__lte=hasta)
+
+    # -------- Paginación --------
+    paginator = Paginator(qs, 20)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    contexto = {
+        "evento": evento,
+        "ordenes": page_obj.object_list,
+        "page_obj": page_obj,
+        "q": q,
+        "desde": desde,
+        "hasta": hasta,
+    }
+    return render(request, "orders/list.html", contexto)

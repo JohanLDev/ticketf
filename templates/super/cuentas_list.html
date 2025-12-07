@@ -24,26 +24,36 @@
       <td>{{ c.plan }}</td>
       <td>{{ c.estado }}</td>
       <td>
-        <a class="btn btn-secondary btn-sm a-site"
-           href="{% url 'accounts:super_asignar_admin' c.id %}">
+
+        {% if c.estado == "activo" %}
+          <a class="btn btn-outline-danger btn-sm a-site"
+            href="{% url 'accounts:super_eliminar_cuenta' c.id %}">
+            Desactivar
+          </a>
+        {% else %}
+          <a class="btn btn-outline-success btn-sm a-site"
+            href="{% url 'accounts:super_reactivar_cuenta' c.id %}">
+            Reactivar
+          </a>
+        {% endif %}
+
+        <a class="btn btn-outline-secondary btn-sm a-site"
+          href="{% url 'accounts:super_editar_cuenta' c.id %}">
+          Editar
+        </a>
+
+        <a class="btn btn-link btn-sm a-site"
+          href="{% url 'accounts:super_asignar_admin' c.id %}">
           Asignar ADMIN
         </a>
 
         <a class="btn btn-link btn-sm a-site"
-           href="{% url 'accounts:ver_admins' c.id %}">
+          href="{% url 'accounts:ver_admins' c.id %}">
           Ver admins
         </a>
 
-        <a class="btn btn-outline-secondary btn-sm a-site"
-           href="{% url 'accounts:super_editar_cuenta' c.id %}">
-          Editar
-        </a>
-
-        <a class="btn btn-outline-danger btn-sm a-site"
-           href="{% url 'accounts:super_eliminar_cuenta' c.id %}">
-          Eliminar
-        </a>
       </td>
+
     </tr>
   {% empty %}
     <tr>

@@ -22,6 +22,7 @@
   <td>
     <a class="btn btn-sm btn-outline-primary" href="{% url 'tickets:list' e.pk %}">Tipos de ticket</a>
     <a class="btn btn-sm btn-outline-info" href="{% url 'orders:event-analytics' e.id %}">Analítica</a>
+    <a class="btn btn-sm btn-outline-dark" href="{% url 'orders:orders-by-event' e.id %}">Órdenes</a>
     <a class="btn btn-sm btn-outline-secondary" href="{% url 'events:edit' e.pk %}">Editar</a>
     <a class="btn btn-sm btn-outline-danger" href="{% url 'events:delete' e.pk %}">Eliminar</a>
   </td>

@@ -1,22 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Eliminar cuenta{% endblock %}
+{% block title %}Desactivar cuenta{% endblock %}
 
 {% block content %}
 <div class="container container-int">
-  <h1>Eliminar cuenta</h1>
+  <h1>Desactivar cuenta</h1>
 
   <p>
-    ¿Estás seguro que quieres eliminar la cuenta
+    ¿Estás seguro de que quieres <strong>desactivar</strong> la cuenta
     <strong>{{ cuenta.nombre }}</strong>?
   </p>
 
   <p class="text-muted">
-    Esta acción no se puede deshacer y se perderán todos los datos asociados a esta cuenta.
+    La cuenta no se eliminará. Simplemente dejará de estar activa y los usuarios no podrán usarla.
+    Toda la información (eventos, tickets, órdenes) seguirá disponible para el superadmin.
   </p>
 
   <form method="post">
     {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+    <button type="submit" class="btn btn-danger">Sí, desactivar</button>
     <a href="{% url 'accounts:super_cuentas' %}" class="btn btn-secondary">Cancelar</a>
   </form>
 </div>

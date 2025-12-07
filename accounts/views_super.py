@@ -18,7 +18,8 @@ class CuentaForm(forms.ModelForm):
 @login_required
 @is_super
 def super_cuentas(request):
-    return render(request, "super/cuentas_list.html", {"cuentas": Cuenta.objects.all()})
+    cuentas = Cuenta.objects.all().order_by("nombre")
+    return render(request, "super/cuentas_list.html", {"cuentas": cuentas})
 
 @login_required
 @is_super
@@ -254,16 +255,40 @@ def super_editar_cuenta(request, cuenta_id):
 @login_required
 @is_super
 def super_eliminar_cuenta(request, cuenta_id):
-    # cuenta_id es UUID
     cuenta = get_object_or_404(Cuenta, id=cuenta_id)
 
     if request.method == "POST":
+        # Desactivar en vez de eliminar
         nombre = cuenta.nombre
-        cuenta.delete()
+        cuenta.estado = "inactivo"   # ← o "inactive" si usas inglés
+        cuenta.save()
+
         messages.success(
             request,
-            f"La cuenta '{nombre}' fue eliminada correctamente."
+            f"La cuenta '{nombre}' fue desactivada correctamente."
         )
         return redirect("accounts:super_cuentas")
 
-    return render(request, "super/cuenta_delete_confirm.html", {"cuenta": cuenta})
+    return render(
+        request,
+        "super/cuenta_delete_confirm.html",
+        {"cuenta": cuenta},
+    )
+
+
+@login_required
+@is_super
+def super_reactivar_cuenta(request, cuenta_id):
+    cuenta = get_object_or_404(Cuenta, id=cuenta_id)
+
+    if request.method == "POST":
+        cuenta.estado = "activo"
+        cuenta.save()
+        messages.success(request, f"La cuenta '{cuenta.nombre}' fue reactivada correctamente.")
+        return redirect("accounts:super_cuentas")
+
+    return render(
+        request,
+        "super/cuenta_reactivate_confirm.html",
+        {"cuenta": cuenta},
+    )

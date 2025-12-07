@@ -8,6 +8,7 @@ from .views_super import (
     super_asignar_admin,
     super_editar_cuenta,
     super_eliminar_cuenta,
+    super_reactivar_cuenta,
 )
 
 
@@ -104,6 +105,11 @@ urlpatterns = [
     path("plan/reportes-premium/", views.premium_reports, name="premium_reports"),
 
 
+    path(
+        "super/cuentas/<uuid:cuenta_id>/reactivar/",
+        super_reactivar_cuenta,
+        name="super_reactivar_cuenta",
+    ),
 
 
 

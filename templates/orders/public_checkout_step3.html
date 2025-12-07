@@ -180,7 +180,38 @@ input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
   const money = n => (n||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0});
   const BUYER_FROM_SERVER = {{ buyer_json|default:"null"|safe }};
 
-    // === Autorellenar con datos de la cuenta (si el usuario está logueado) ===
+  // === Validador de RUT chileno (módulo 11) ===
+  function validarRutChileno(rutRaw) {
+    if (!rutRaw) return false;
+    let rut = rutRaw.replace(/\./g, "").replace(/\s/g, "").toUpperCase();
+
+    if (!rut.includes("-")) return false;
+    const [cuerpo, dv] = rut.split("-");
+
+    if (!/^\d+$/.test(cuerpo)) return false;
+    if (!/^[0-9K]$/.test(dv)) return false;
+
+    const reversed = cuerpo.split("").reverse().map(d => parseInt(d, 10));
+    const factors = [2, 3, 4, 5, 6, 7];
+
+    let suma = 0;
+    let fi = 0;
+
+    for (const d of reversed) {
+      suma += d * factors[fi];
+      fi = (fi + 1) % factors.length;
+    }
+
+    const resto = 11 - (suma % 11);
+    let dvEsperado;
+    if (resto === 11) dvEsperado = "0";
+    else if (resto === 10) dvEsperado = "K";
+    else dvEsperado = String(resto);
+
+    return dv === dvEsperado;
+  }
+
+  // === Autorellenar con datos de la cuenta (si el usuario está logueado) ===
   fetch("/accounts/api/profile/", {
     credentials: "include"
   })
@@ -281,7 +312,7 @@ input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
   selCiudad.addEventListener('change', () => { fillComunas(selCiudad.value); saveBuyer(); });
   selComuna.addEventListener('change', saveBuyer);
 
-    /* === Persistencia + Prefill desde el perfil logeado === */
+  /* === Persistencia + Prefill desde el perfil logeado === */
   const KEY = 'checkout_buyer';
   const fields = [
     'nombres','apellido1','apellido2','email','email2','telefono',
@@ -359,6 +390,63 @@ input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
     }
   }
 
+  /* === Validaciones suaves === */
+  function validateSoft(){
+    // reset (por si venía algo “pegado”)
+    ['email','email2','telefono','documento','patente','region','ciudad','comuna','acepta_terms']
+      .forEach(id => { const el = $(id); if (el) el.setCustomValidity(''); });
+
+    // EMAIL formato + coincidencia
+    const e1 = $('email'), e2 = $('email2');
+    if (e1) {
+      const emailFmtOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e1.value||'').trim());
+      e1.setCustomValidity(emailFmtOk ? '' : 'Email inválido.');
+    }
+    if (e1 && e2) {
+      const emailsOk = (e1.value||'').trim() && (e2.value||'').trim() && (e1.value.trim() === e2.value.trim());
+      e2.setCustomValidity(emailsOk ? '' : 'Los emails no coinciden.');
+    }
+
+    // teléfono (>=8 dígitos)
+    const tel = $('telefono');
+    if (tel) tel.setCustomValidity(/^\d{8,}$/.test((tel.value||'').trim()) ? '' : 'Teléfono inválido.');
+
+    // documento por tipo: RUT (módulo 11) o pasaporte
+    const doc = $('documento');
+    const isRut = $('doc_tipo_rut')?.checked;
+    if (doc) {
+      const valor = (doc.value || '').trim();
+      if (isRut) {
+        const okRut = validarRutChileno(valor);
+        doc.setCustomValidity(okRut ? "" : "RUT inválido. Verifica el dígito verificador.");
+      } else {
+        const okPass = /^[A-Za-z0-9\-]{6,15}$/.test(valor);
+        doc.setCustomValidity(okPass ? "" : "Número de documento inválido.");
+      }
+    }
+
+    // país=CL → región/ciudad/comuna requeridas
+    if (selPais.value === 'CL') {
+      selRegion.required = true; selCiudad.required = true; selComuna.required = true;
+    } else {
+      selRegion.required = false; selCiudad.required = false; selComuna.required = false;
+      selRegion.setCustomValidity(''); selCiudad.setCustomValidity(''); selComuna.setCustomValidity('');
+    }
+
+    // patente si compró estacionamiento
+    if (hasParking && inpPat) {
+      const okPat = /^[A-Za-z0-9\-]{4,8}$/.test((inpPat.value||'').trim());
+      inpPat.setCustomValidity(okPat ? '' : 'Ingresa una patente válida.');
+    }
+
+    // términos
+    const terms = $('acepta_terms');
+    if (terms) terms.setCustomValidity(terms.checked ? '' : 'Debes aceptar.');
+
+    pagar.disabled = !form.checkValidity();
+    return form.checkValidity();
+  }
+
   // Guardar en sessionStorage cada vez que el usuario escribe algo
   document.querySelectorAll('#checkoutForm input, #checkoutForm select').forEach(el => {
     el.addEventListener('input', () => { saveBuyer(); validateSoft(); });
@@ -368,79 +456,21 @@ input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
 
   // Prefill inicial
   loadBuyer();
+  validateSoft();
 
-
-  /* === Validaciones suaves === */
-  function validateSoft(){
-  // reset (por si venía algo “pegado”)
-  ['email','email2','telefono','documento','patente','region','ciudad','comuna','acepta_terms']
-    .forEach(id => { const el = $(id); if (el) el.setCustomValidity(''); });
-
-  // EMAIL formato + coincidencia
-  const e1 = $('email'), e2 = $('email2');
-  if (e1) {
-    const emailFmtOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e1.value||'').trim());
-    e1.setCustomValidity(emailFmtOk ? '' : 'Email inválido.');
-  }
-  if (e1 && e2) {
-    const emailsOk = (e1.value||'').trim() && (e2.value||'').trim() && (e1.value.trim() === e2.value.trim());
-    e2.setCustomValidity(emailsOk ? '' : 'Los emails no coinciden.');
+  // Formateo básico del documento (opcional, sin puntos)
+  const docInput = $('documento');
+  if (docInput) {
+    docInput.addEventListener("input", () => {
+      let v = docInput.value.toUpperCase().replace(/[^0-9K\-]/g,'');
+      v = v.replace(/--+/g,'-');
+      docInput.value = v;
+    });
   }
 
-  // teléfono (>=8 dígitos)
-  const tel = $('telefono');
-  if (tel) tel.setCustomValidity(/^\d{8,}$/.test((tel.value||'').trim()) ? '' : 'Teléfono inválido.');
-
-  // documento por tipo (acepta 12345678-9 o 123456789)
-  const doc = $('documento');
-  const isRut = $('doc_tipo_rut')?.checked;
-  if (doc) {
-    const v = (doc.value||'').replace(/\./g,'').trim();
-    const ok = isRut ? /^\d{6,10}(-?[0-9Kk])$/.test(v) : /^[A-Za-z0-9\-]{6,15}$/.test(v);
-    doc.setCustomValidity(ok ? '' : 'Número de documento inválido.');
-  }
-
-  // país=CL → región/ciudad/comuna requeridas
-  if (selPais.value === 'CL') {
-    selRegion.required = true; selCiudad.required = true; selComuna.required = true;
-  } else {
-    selRegion.required = false; selCiudad.required = false; selComuna.required = false;
-    selRegion.setCustomValidity(''); selCiudad.setCustomValidity(''); selComuna.setCustomValidity('');
-  }
-
-  // patente si compró estacionamiento
-  if (hasParking && inpPat) {
-    const okPat = /^[A-Za-z0-9\-]{4,8}$/.test((inpPat.value||'').trim());
-    inpPat.setCustomValidity(okPat ? '' : 'Ingresa una patente válida.');
-  }
-
-  // términos
-  const terms = $('acepta_terms');
-  if (terms) terms.setCustomValidity(terms.checked ? '' : 'Debes aceptar.');
-
-  return form.checkValidity();
-  }
-
-
-  // Documento (RUT/Pasaporte)
-  const doc = $('documento'); const isRut = $('doc_tipo_rut')?.checked;
-  if (doc) {
-    const v = (doc.value||'').trim();
-    const ok = isRut ? /^\d{6,10}-?[0-9kK]$/.test(v) : /^[A-Za-z0-9\-]{6,15}$/.test(v);
-    doc.setCustomValidity(ok ? '' : 'Número de documento inválido.');
-  }
-
-  // Patente requerida si hay estacionamiento
-  if (hasParking && inpPat) {
-    const okPat = /^[A-Za-z0-9\-]{4,8}$/.test((inpPat.value||'').trim());
-    inpPat.setCustomValidity(okPat ? '' : 'Ingresa una patente válida.');
-  }
-
-
-  form.addEventListener('submit', e=>{
+    form.addEventListener('submit', e=>{
     e.preventDefault();
 
-    // Mantén tu validación actual
     const ok = validateSoft();
     form.classList.add('was-validated');
     if (!ok) return;
@@ -463,17 +493,37 @@ input.touched:invalid, select.touched:invalid, textarea.touched:invalid {
     buyer.acepta_terms = document.getElementById('acepta_terms')?.checked;
     buyer.acepta_news  = document.getElementById('acepta_news')?.checked;
 
-    // 3) Inserta buyer dentro del payload existente (sin tocar lo demás)
+    // 3) Mezcla buyer dentro del payload existente
     const merged = { ...prev, buyer };
+
+    // Lo seguimos guardando en sessionStorage por si el usuario vuelve atrás
     sessionStorage.setItem('checkout_payload', JSON.stringify(merged));
     sessionStorage.setItem('checkout_buyer', JSON.stringify(buyer));
 
-    // 4) Redirige a la pantalla de pago simulado
-    window.location.href = "{% url 'orders:public-checkout-pay' event.slug %}";
-  });
+    // 4) Enviar TODO al servidor por POST (no con window.location.href)
+    //    Creamos inputs ocultos con JSON
+        // 4) Enviar el correo al servidor por POST a public_checkout_pay
+    form.method = 'post';
+    form.action = "{% url 'orders:public-checkout-pay' event.slug %}";
 
+    // Creamos (o reutilizamos) un input oculto llamado "email"
+    let emailHidden = document.querySelector('input[name="email"]');
+    if (!emailHidden) {
+      emailHidden = document.createElement('input');
+      emailHidden.type = 'hidden';
+      emailHidden.name = 'email';
+      form.appendChild(emailHidden);
+    }
+
+    // Usamos el mismo valor del campo visible #email
+    emailHidden.value = document.getElementById('email').value;
+
+    form.submit();
+
+  });
 
 
 })();
 </script>
+
 {% endblock %}
